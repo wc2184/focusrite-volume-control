@@ -8,11 +8,20 @@
 
 <p align="center">
   <a href="https://github.com/wc2184/focusrite-volume-control/releases/latest">Download</a> ·
-  <a href="https://github.com/wc2184/focusrite-volume-control/issues">Issues</a> ·
-  <a href="LICENSE">MIT License</a>
+  <a href="https://github.com/wc2184/focusrite-volume-control/issues">Issues</a>
 </p>
 
 A tiny macOS app for controlling **Playback 1–2** in Focusrite Control 2. Native-style volume HUD, custom shortcuts, and a big, readable Dock volume display. Works with Focusrite Control 2 minimized.
+
+<p align="center">
+  <img src="docs/hud-low.png" width="180" alt="Volume HUD at −12 dB">
+  &nbsp;
+  <img src="docs/hud-high.png" width="180" alt="Volume HUD at full volume, +6 dB">
+  &nbsp;
+  <img src="docs/hud-muted.png" width="180" alt="Volume HUD when muted">
+</p>
+
+<p align="center"><sub>Lower volume · Full volume · Muted</sub></p>
 
 ## Install
 
@@ -38,4 +47,4 @@ If volume keys stop working after an update, toggle the app off and on in Access
 
 ---
 
-An independent project, unaffiliated with Focusrite. Based on [Enum’s Focusrite Volume Control](https://github.com/enum-dot-dev/focusrite-volume-control). [MIT licensed](LICENSE); see [attribution](NOTICE).
+An independent project, unaffiliated with Focusrite. Based on [Enum’s Focusrite Volume Control](https://github.com/enum-dot-dev/focusrite-volume-control).

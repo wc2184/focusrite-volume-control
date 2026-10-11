@@ -25,7 +25,7 @@ struct VolumeHUDView: View {
         Color.clear
             .frame(width: Self.panelSize, height: Self.panelSize)
             .overlay(alignment: .topLeading) {
-                Image("FocusriteControlIcon")
+                Image("VolumeControlIcon")
                     .resizable()
                     .interpolation(.high)
                     .frame(width: 125, height: 125)

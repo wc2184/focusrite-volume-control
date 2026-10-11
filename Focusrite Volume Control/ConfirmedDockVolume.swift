@@ -242,7 +242,7 @@ private final class ConfirmedDockTileView: NSView {
         context.drawPath(using: .fillStroke)
 
         // Outline the slash so it stays readable over both the white speaker
-        // and the colored project logo at small Dock sizes.
+        // and the colored app icon at small Dock sizes.
         for (color, width) in [(NSColor.black, CGFloat(16)), (NSColor.white, CGFloat(8))] {
             context.setStrokeColor(color.cgColor)
             context.setLineWidth(width)
