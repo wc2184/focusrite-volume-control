@@ -1,0 +1,78 @@
+//
+//  PreferencesView.swift
+//  Focusrite Volume Control
+//
+//  Preferences window for app settings
+//
+
+import SwiftUI
+
+struct PreferencesView: View {
+    @ObservedObject var volumeController: VolumeController
+    @ObservedObject var shortcutManager = ShortcutManager.shared
+    @ObservedObject var launchAtLogin = LaunchAtLoginManager.shared
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+                // General Section
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("General")
+                        .font(.headline)
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        // Launch at Login toggle
+                        VStack(alignment: .leading, spacing: 2) {
+                            Toggle("Launch at Login", isOn: $launchAtLogin.isEnabled)
+
+                            Text("Start automatically when you log in")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .padding(.leading, 20)
+                        }
+
+                        // Ensure Direct Monitor On toggle with subtitle
+                        VStack(alignment: .leading, spacing: 2) {
+                            Toggle("Ensure Direct Monitor On", isOn: $volumeController.ensureDirectMonitorOn)
+
+                            Text("The app will NOT work with this disabled")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .padding(.leading, 20)
+                        }
+
+                        // Allow Gain toggle with subtitle
+                        VStack(alignment: .leading, spacing: 2) {
+                            Toggle("Allow Gain (0 to +6 dB)", isOn: $volumeController.allowGain)
+
+                            Text("Enable volume boost above unity gain")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .padding(.leading, 20)
+                        }
+                    }
+                }
+
+                Divider()
+
+            // Keyboard Shortcuts Section
+            ShortcutsSectionView(shortcutManager: shortcutManager)
+
+            Divider()
+
+            // Support
+            HStack(spacing: 6) {
+                Image(systemName: "cup.and.saucer.fill")
+                    .foregroundStyle(.orange)
+                    .font(.caption)
+                Link("If this app saved you time, buy me a coffee",
+                     destination: URL(string: "https://buymeacoffee.com/enum")!)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .center)
+        }
+        .padding()
+        .frame(width: 380)
+        .fixedSize(horizontal: false, vertical: true)
+    }
+}

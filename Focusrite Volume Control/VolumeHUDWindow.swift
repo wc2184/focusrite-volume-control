@@ -1,0 +1,141 @@
+//
+//  VolumeHUDWindow.swift
+//  Focusrite Volume Control
+//
+//  NSPanel-based floating HUD window that shows Focusrite volume changes.
+//  Non-activating, click-through, floats above all windows including fullscreen.
+//
+
+import Cocoa
+import SwiftUI
+
+// MARK: - HUD Window (NSPanel subclass)
+
+class VolumeHUDWindow: NSPanel {
+    override var canBecomeKey: Bool { false }
+    override var canBecomeMain: Bool { false }
+
+    /// Use the system HUD material with a mask that clips the backdrop itself.
+    func setHUDContent<V: View>(_ rootView: V, size: NSSize) {
+        let surface = NSVisualEffectView(frame: NSRect(origin: .zero, size: size))
+        surface.material = .hudWindow
+        surface.blendingMode = .behindWindow
+        surface.state = .active
+        let mask = NSImage(size: size, flipped: false) { rect in
+            NSColor.white.setFill()
+            NSBezierPath(roundedRect: rect, xRadius: 20, yRadius: 20).fill()
+            return true
+        }
+        surface.maskImage = mask
+
+        let hostingView = TransparentHostingView(rootView: rootView)
+        hostingView.translatesAutoresizingMaskIntoConstraints = false
+        surface.addSubview(hostingView)
+        NSLayoutConstraint.activate([
+            hostingView.leadingAnchor.constraint(equalTo: surface.leadingAnchor),
+            hostingView.trailingAnchor.constraint(equalTo: surface.trailingAnchor),
+            hostingView.topAnchor.constraint(equalTo: surface.topAnchor),
+            hostingView.bottomAnchor.constraint(equalTo: surface.bottomAnchor),
+        ])
+
+        self.contentView = surface
+    }
+}
+
+private final class TransparentHostingView<Content: View>: NSHostingView<Content> {
+    override var isOpaque: Bool { false }
+}
+
+// MARK: - HUD Panel Manager (singleton)
+
+class VolumeHUDPanel {
+    static let shared = VolumeHUDPanel()
+
+    private var panel: VolumeHUDWindow?
+    private let viewModel = VolumeHUDViewModel()
+    private var dismissTimer: Timer?
+    private let dismissDelay: TimeInterval = 2.0
+
+    private init() {}
+
+    /// Update the HUD values without showing it (for Combine-driven updates while already visible)
+    func update(volume: Double, isMuted: Bool) {
+        viewModel.volumeDb = volume
+        viewModel.isMuted = isMuted
+    }
+
+    /// Show the HUD with current volume state (call from key/hotkey handlers)
+    func show(volume: Double, isMuted: Bool) {
+        // Update view model
+        viewModel.volumeDb = volume
+        viewModel.isMuted = isMuted
+
+        // Create panel lazily
+        if panel == nil {
+            createPanel()
+        }
+
+        guard let panel else { return }
+
+        // Match the native HUD position on the pointer's display.
+        positionPanel(panel)
+
+        // Show immediately. An in-flight fade could otherwise hide a new HUD.
+        panel.alphaValue = 1
+        panel.orderFrontRegardless()
+
+        // Reset dismiss timer
+        dismissTimer?.invalidate()
+        let timer = Timer(timeInterval: dismissDelay, repeats: false) { [weak self] _ in
+            self?.dismiss()
+        }
+        dismissTimer = timer
+        RunLoop.main.add(timer, forMode: .common)
+    }
+
+    /// Hide the HUD after the most recent key press.
+    func dismiss() {
+        guard let panel else { return }
+        dismissTimer?.invalidate()
+        dismissTimer = nil
+        panel.orderOut(nil)
+    }
+
+    // MARK: - Private
+
+    private func createPanel() {
+        let hudView = VolumeHUDView(viewModel: viewModel)
+        let panelSize = NSSize(width: VolumeHUDView.panelSize, height: VolumeHUDView.panelSize)
+
+        let panel = VolumeHUDWindow(
+            contentRect: NSRect(origin: .zero, size: panelSize),
+            styleMask: [.borderless, .nonactivatingPanel],
+            backing: .buffered,
+            defer: false
+        )
+
+        panel.isOpaque = false
+        panel.backgroundColor = NSColor.clear
+        panel.hasShadow = false
+        panel.level = NSWindow.Level.screenSaver  // Above everything including fullscreen
+        panel.collectionBehavior = NSWindow.CollectionBehavior([.canJoinAllSpaces, .fullScreenAuxiliary, .stationary])
+        panel.ignoresMouseEvents = true
+        panel.isMovable = false
+        panel.setHUDContent(hudView, size: panelSize)
+
+        self.panel = panel
+    }
+
+    private func positionPanel(_ panel: VolumeHUDWindow) {
+        let mouseLocation = NSEvent.mouseLocation
+        guard let screen = NSScreen.screens.first(where: { $0.frame.contains(mouseLocation) })
+                ?? NSScreen.main else { return }
+        let screenFrame = screen.frame
+        let panelSize = panel.frame.size
+
+        // The supplied native capture places the HUD 140 points above the bottom.
+        let x = screenFrame.midX - panelSize.width / 2
+        let y = screenFrame.minY + 140
+        panel.setFrameOrigin(NSPoint(x: x, y: y))
+    }
+}
