@@ -14,14 +14,10 @@
 A tiny macOS app for controlling **Playback 1–2** in Focusrite Control 2. Native-style volume HUD, custom shortcuts, and a big, readable Dock volume display. Works with Focusrite Control 2 minimized.
 
 <p align="center">
-  <img src="docs/hud-low.png" width="180" alt="Volume HUD at −12 dB">
-  &nbsp;
-  <img src="docs/hud-high.png" width="180" alt="Volume HUD at full volume, +6 dB">
-  &nbsp;
-  <img src="docs/hud-muted.png" width="180" alt="Volume HUD when muted">
+  <img src="docs/hud-demo.gif" width="220" alt="Volume HUD increasing from mute to full volume, then decreasing back to mute">
 </p>
 
-<p align="center"><sub>Lower volume · Full volume · Muted</sub></p>
+<p align="center"><sub>Volume up. Volume down. Right where you expect it.</sub></p>
 
 ## Install
 
