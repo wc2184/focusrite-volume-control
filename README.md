@@ -13,7 +13,7 @@
 
 A tiny macOS app that lets your Mac’s volume keys control your Focusrite’s volume. Native-style volume HUD, custom shortcuts, and a big, readable Dock volume display. Works with Focusrite Control 2 minimized.
 
-**Heavily based on [Nick Morozov’s Focusrite Volume Control](https://github.com/enum-dot-dev/focusrite-volume-control).** I made this version because the original required macOS Sequoia or later, and I wanted to stay on Sonoma. My changes focus on more reliable, consistent volume control—keeping volume changes and displayed levels in step, even during rapid key presses.
+**Heavily based on [Nick Morozov’s Focusrite Volume Control](https://github.com/enum-dot-dev/focusrite-volume-control).** I made this version because the original required macOS Sequoia or later, and I wanted to stay on Sonoma.
 
 <p align="center">
   <img src="docs/hud-demo.gif" width="220" alt="Volume HUD increasing from mute to full volume, then decreasing back to mute">
@@ -43,6 +43,12 @@ Requires **macOS Sonoma 14.5+** and a Focusrite interface supported by **Focusri
 - Click the Dock icon to toggle Preferences; click the menu bar icon for the volume popover.
 
 If volume keys stop working after an update, toggle the app off and on in Accessibility settings, then relaunch it.
+
+## How it works
+
+Like Nick’s version, the app controls Focusrite Control 2 through UI automation using AppleScript and macOS’s Accessibility API. When your Focusrite is selected as the sound output, a `CGEventTap` intercepts your volume keys and routes them to FC2’s volume controls instead of macOS’s built-in volume control.
+
+This version builds on that approach for more reliable, consistent control. It writes directly to cached Accessibility controls first, with AppleScript as a fallback. Rapid key presses accumulate through a single volume writer, and older refresh results cannot overwrite pending changes. The HUD responds immediately, while the Dock independently reads FC2’s confirmed volume to keep its display accurate.
 
 ---
 
