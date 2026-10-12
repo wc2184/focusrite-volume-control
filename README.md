@@ -36,9 +36,11 @@ A tiny macOS app that lets your Mac’s volume keys control your Focusrite’s v
 
 | Build | macOS | Status |
 | --- | --- | --- |
-| [Modern-Sonoma-and-Later](https://github.com/wc2184/focusrite-volume-control/releases/download/v1.0.1/Focusrite-Volume-Control-v1.0.1-Modern-Sonoma-and-Later.zip) | Sonoma 14.5+ | Recommended; the original binary, unchanged |
-| [Ventura-Experimental](https://github.com/wc2184/focusrite-volume-control/releases/download/v1.0.1/Focusrite-Volume-Control-v1.0.1-Ventura-Experimental.zip) | Ventura 13 | Experimental |
-| [Monterey-Experimental](https://github.com/wc2184/focusrite-volume-control/releases/download/v1.0.1/Focusrite-Volume-Control-v1.0.1-Monterey-Experimental.zip) | Monterey 12 | Experimental |
+| [Modern-Sonoma-and-Later](https://github.com/wc2184/focusrite-volume-control/releases/download/v1.1.0/Focusrite-Volume-Control-v1.1.0-Modern-Sonoma-and-Later.zip) | Sonoma 14.5+ | Recommended |
+| [Ventura-Experimental](https://github.com/wc2184/focusrite-volume-control/releases/download/v1.1.0/Focusrite-Volume-Control-v1.1.0-Ventura-Experimental.zip) | Ventura 13 | Experimental |
+| [Monterey-Experimental](https://github.com/wc2184/focusrite-volume-control/releases/download/v1.1.0/Focusrite-Volume-Control-v1.1.0-Monterey-Experimental.zip) | Monterey 12 | Experimental |
+
+The previous [v1.0.1 downloads](https://github.com/wc2184/focusrite-volume-control/releases/tag/v1.0.1) remain available unchanged.
 
 All builds support Apple silicon and Intel Macs and require a compatible Focusrite interface and **Focusrite Control 2**. The experimental builds have passed build and unit checks on Sonoma; they have **not been tested on Ventura or Monterey**, and older FC2 versions may have different controls. Use an FC2 version compatible with your OS and interface.
 
@@ -47,6 +49,7 @@ On Monterey, set up launch at login manually in **System Preferences → Users &
 ## Everyday use
 
 - Volume and mute keys control your interface. Custom shortcuts are available in Preferences.
+- Optional **Perceptual Volume Curve** in Preferences: halfway is **−16 dB**, with discrete steps shared by the keys, slider, and HUD. It defaults off, remembers your choice, and preserves the current volume when switched.
 - The Dock shows the confirmed dB value, a mute icon at −127, or **—** when unavailable.
 - Click the Dock icon to toggle Preferences; click the menu bar icon for the volume popover.
 
