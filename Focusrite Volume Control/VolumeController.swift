@@ -114,7 +114,7 @@ class VolumeController: ObservableObject {
     init(backend: VolumeBackend, preferences: UserDefaults? = .standard) {
         self.backend = backend
         self.preferences = preferences
-        self.usePerceptualVolumeCurve = preferences?.bool(forKey: "usePerceptualVolumeCurve") ?? false
+        self.usePerceptualVolumeCurve = preferences?.object(forKey: "usePerceptualVolumeCurve") as? Bool ?? true
         setupBindings()
     }
 
