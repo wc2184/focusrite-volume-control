@@ -76,11 +76,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Keep HUD values in sync with backend (updates content but doesn't show the HUD)
         volumeController.$playbackVolume
-            .combineLatest(volumeController.$playbackMuted)
+            .combineLatest(volumeController.$playbackMuted,
+                           volumeController.$usePerceptualVolumeCurve,
+                           volumeController.$allowGain)
             .dropFirst()
             .receive(on: DispatchQueue.main)
-            .sink { volume, isMuted in
-                VolumeHUDPanel.shared.update(volume: volume, isMuted: isMuted)
+            .sink { volume, isMuted, perceptual, allowGain in
+                VolumeHUDPanel.shared.update(volume: volume, isMuted: isMuted,
+                                            levels: VolumeTickScale.levels(perceptual: perceptual, allowGain: allowGain))
             }
             .store(in: &cancellables)
 
@@ -208,7 +211,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// Show the floating HUD with current volume state
     private func showHUD() {
         let vc = volumeController!
-        VolumeHUDPanel.shared.show(volume: vc.playbackVolume, isMuted: vc.playbackMuted)
+        VolumeHUDPanel.shared.show(volume: vc.playbackVolume, isMuted: vc.playbackMuted,
+                                  levels: vc.volumeLevels)
     }
 
     private func setupHotkeyManager() {
