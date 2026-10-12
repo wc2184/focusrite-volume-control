@@ -49,7 +49,7 @@ On Monterey, set up launch at login manually in **System Preferences → Users &
 ## Everyday use
 
 - Volume and mute keys control your interface. Custom shortcuts are available in Preferences.
-- Optional **Perceptual Volume Curve** in Preferences: halfway is **−16 dB**, with discrete steps shared by the keys, slider, and HUD. It defaults off, remembers your choice, and preserves the current volume when switched.
+- **Perceptual Volume Curve (Recommended)** is on by default: more control at low volumes and smoother changes in loudness, with halfway at **−16 dB**. Keys, slider, and HUD use discrete steps. You can switch it off; your choice is remembered and switching preserves the current volume.
 - The Dock shows the confirmed dB value, a mute icon at −127, or **—** when unavailable.
 - Click the Dock icon to toggle Preferences; click the menu bar icon for the volume popover.
 

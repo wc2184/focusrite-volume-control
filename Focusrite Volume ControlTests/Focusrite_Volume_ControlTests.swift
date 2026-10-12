@@ -5,6 +5,7 @@ import Combine
 final class Focusrite_Volume_ControlTests: XCTestCase {
     func testEachVolumeKeyMovesExactlyOneTickAndRetraces() {
         let controller = VolumeController(backend: StubBackend(), preferences: nil)
+        controller.usePerceptualVolumeCurve = false
         for tick in 0..<VolumeTickScale.maximumTick {
             controller.setPlaybackVolume(VolumeTickScale.levels[tick])
             controller.playbackVolumeUp()
@@ -18,6 +19,7 @@ final class Focusrite_Volume_ControlTests: XCTestCase {
 
     func testHigherTicksUseOneDbSteps() {
         let controller = VolumeController(backend: StubBackend(), preferences: nil)
+        controller.usePerceptualVolumeCurve = false
         for volume in -6...5 {
             controller.setPlaybackVolume(Double(volume))
             controller.playbackVolumeUp()
@@ -27,6 +29,7 @@ final class Focusrite_Volume_ControlTests: XCTestCase {
 
     func testPlusSixIsFullScale() {
         let controller = VolumeController(backend: StubBackend(), preferences: nil)
+        controller.usePerceptualVolumeCurve = false
         controller.setPlaybackVolume(5)
         controller.playbackVolumeUp()
         XCTAssertEqual(controller.playbackVolume, 6)
@@ -36,6 +39,7 @@ final class Focusrite_Volume_ControlTests: XCTestCase {
 
     func testOptimisticValueAccumulatesWhileBackendIsBusy() {
         let controller = VolumeController(backend: StubBackend(), preferences: nil)
+        controller.usePerceptualVolumeCurve = false
         controller.setPlaybackVolume(-6)
         controller.playbackVolumeUp()
         controller.playbackVolumeUp()
@@ -105,6 +109,7 @@ final class Focusrite_Volume_ControlTests: XCTestCase {
 
     func testChangingCurvePreservesCurrentVolumeAndMuteRestore() {
         let controller = VolumeController(backend: StubBackend(), preferences: nil)
+        controller.usePerceptualVolumeCurve = false
         controller.setPlaybackVolume(-12)
         controller.usePerceptualVolumeCurve = true
         XCTAssertEqual(controller.playbackVolume, -12)
@@ -132,12 +137,19 @@ final class Focusrite_Volume_ControlTests: XCTestCase {
         let preferences = UserDefaults(suiteName: domain)!
         defer { preferences.removePersistentDomain(forName: domain) }
         let original = VolumeController(backend: StubBackend(), preferences: preferences)
-        XCTAssertFalse(original.usePerceptualVolumeCurve)
-        original.usePerceptualVolumeCurve = true
+        XCTAssertTrue(original.usePerceptualVolumeCurve)
+        original.usePerceptualVolumeCurve = false
         let reloaded = VolumeController(backend: StubBackend(), preferences: preferences)
-        XCTAssertTrue(reloaded.usePerceptualVolumeCurve)
-        reloaded.usePerceptualVolumeCurve = false
-        XCTAssertFalse(VolumeController(backend: StubBackend(), preferences: preferences).usePerceptualVolumeCurve)
+        XCTAssertFalse(reloaded.usePerceptualVolumeCurve)
+        reloaded.usePerceptualVolumeCurve = true
+        XCTAssertTrue(VolumeController(backend: StubBackend(), preferences: preferences).usePerceptualVolumeCurve)
+    }
+
+    func testPerceptualCurveIsTheDefaultWithoutASavedPreference() {
+        let controller = VolumeController(backend: StubBackend(), preferences: nil)
+        XCTAssertTrue(controller.usePerceptualVolumeCurve)
+        XCTAssertEqual(controller.maximumVolumeTick, 16)
+        XCTAssertEqual(controller.volumeForTick(8), -16)
     }
 }
 

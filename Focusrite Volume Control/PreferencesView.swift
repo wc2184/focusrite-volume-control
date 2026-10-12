@@ -41,9 +41,9 @@ struct PreferencesView: View {
                         }
 
                         VStack(alignment: .leading, spacing: 2) {
-                            Toggle("Perceptual Volume Curve", isOn: $volumeController.usePerceptualVolumeCurve)
+                            Toggle("Perceptual Volume Curve (Recommended)", isOn: $volumeController.usePerceptualVolumeCurve)
 
-                            Text("50% = −16 dB. Volume keys and slider use discrete steps.")
+                            Text("More control at low volumes and smoother changes in loudness. Halfway = −16 dB.")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                                 .padding(.leading, 20)
