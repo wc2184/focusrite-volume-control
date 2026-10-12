@@ -11,7 +11,9 @@
   <a href="https://github.com/wc2184/focusrite-volume-control/issues">Issues</a>
 </p>
 
-A tiny macOS app for controlling **Playback 1–2** in Focusrite Control 2. Native-style volume HUD, custom shortcuts, and a big, readable Dock volume display. Works with Focusrite Control 2 minimized.
+A tiny macOS app that lets your Mac’s volume keys control your Focusrite’s volume. Native-style volume HUD, custom shortcuts, and a big, readable Dock volume display. Works with Focusrite Control 2 minimized.
+
+**Heavily based on [Enum’s Focusrite Volume Control](https://github.com/enum-dot-dev/focusrite-volume-control).** I made this version because the original required macOS Sequoia or later, and I wanted to stay on Sonoma. My changes focus on more reliable, consistent volume control—keeping volume changes and displayed levels in step, even during rapid key presses.
 
 <p align="center">
   <img src="docs/hud-demo.gif" width="220" alt="Volume HUD increasing from mute to full volume, then decreasing back to mute">
@@ -29,9 +31,10 @@ A tiny macOS app for controlling **Playback 1–2** in Focusrite Control 2. Nati
    ```
 
 3. Open the app and grant **Accessibility** access in **System Settings → Privacy & Security → Accessibility**. Allow Automation if prompted.
-4. Keep **Focusrite Control 2** running and select your Focusrite as the Mac’s sound output. Press your volume keys.
+4. Enable **Direct Monitor** in **Focusrite Control 2**, or press the **Direct** button on your physical Focusrite interface.
+5. Keep **Focusrite Control 2** running and select your Focusrite as the Mac’s sound output. Press your volume keys.
 
-Requires **macOS 14.5+** and a Focusrite interface supported by **Focusrite Control 2**. The release supports Apple silicon and Intel Macs.
+Requires **macOS Sonoma 14.5+** and a Focusrite interface supported by **Focusrite Control 2**. The release supports Apple silicon and Intel Macs.
 
 ## Everyday use
 
@@ -43,4 +46,4 @@ If volume keys stop working after an update, toggle the app off and on in Access
 
 ---
 
-An independent project, unaffiliated with Focusrite. Based on [Enum’s Focusrite Volume Control](https://github.com/enum-dot-dev/focusrite-volume-control).
+An independent project, unaffiliated with Focusrite.
