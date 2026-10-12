@@ -19,8 +19,31 @@ enum VolumeTickScale {
 
     static var maximumTick: Int { levels.count - 1 }
 
-    static func tick(for volume: Double) -> Int {
+    private static let perceptualWithGain = perceptualLevels(maximum: 6)
+    private static let perceptualWithoutGain = perceptualLevels(maximum: 0)
+
+    static func levels(perceptual: Bool, allowGain: Bool) -> [Double] {
+        guard perceptual else { return levels }
+        return allowGain ? perceptualWithGain : perceptualWithoutGain
+    }
+
+    static func tick(for volume: Double, levels: [Double] = VolumeTickScale.levels) -> Int {
         levels.indices.min { abs(levels[$0] - volume) < abs(levels[$1] - volume) } ?? 0
+    }
+
+    private static func perceptualLevels(maximum: Double) -> [Double] {
+        let minimum = levels[0]
+        // Calibrate the power curve to -16 dB at tick 8 of 16, with either
+        // 0 or +6 dB at the top. FC2 accepts integer dB values only.
+        let exponent = log((-16 - minimum) / (maximum - minimum)) / log(0.5)
+        var result = (0...maximumTick).map { tick in
+            round(minimum + (maximum - minimum) * pow(Double(tick) / Double(maximumTick), exponent))
+        }
+        // Keep unity gain selectable when the curve also includes boost.
+        if maximum > 0 {
+            result[self.tick(for: 0, levels: result)] = 0
+        }
+        return result
     }
 }
 
@@ -46,14 +69,34 @@ class VolumeController: ObservableObject {
     }
     @Published var ensureDirectMonitorOn: Bool = true  // Auto-enable Direct Monitor before volume changes
     @Published var allowGain: Bool = true  // The HUD's full scale is +6 dB.
+    @Published var usePerceptualVolumeCurve: Bool {
+        didSet { preferences?.set(usePerceptualVolumeCurve, forKey: "usePerceptualVolumeCurve") }
+    }
     let minVolume: Double = -127.0  // FC2's actual minimum
 
     /// Maximum volume depends on allowGain setting
     var maxVolume: Double { allowGain ? 6.0 : 0.0 }
 
+    var volumeLevels: [Double] {
+        VolumeTickScale.levels(perceptual: usePerceptualVolumeCurve, allowGain: allowGain)
+    }
+
+    var maximumVolumeTick: Int {
+        VolumeTickScale.tick(for: maxVolume, levels: volumeLevels)
+    }
+
+    func volumeTick(for volume: Double) -> Int {
+        min(maximumVolumeTick, VolumeTickScale.tick(for: volume, levels: volumeLevels))
+    }
+
+    func volumeForTick(_ tick: Int) -> Double {
+        volumeLevels[max(0, min(maximumVolumeTick, tick))]
+    }
+
     // MARK: - Private Properties
 
     private let backend: VolumeBackend
+    private let preferences: UserDefaults?
     private var cancellables = Set<AnyCancellable>()
 
     // Pre-mute volume for restore
@@ -68,8 +111,10 @@ class VolumeController: ObservableObject {
 
     // MARK: - Initialization
 
-    init(backend: VolumeBackend) {
+    init(backend: VolumeBackend, preferences: UserDefaults? = .standard) {
         self.backend = backend
+        self.preferences = preferences
+        self.usePerceptualVolumeCurve = preferences?.bool(forKey: "usePerceptualVolumeCurve") ?? false
         setupBindings()
     }
 
@@ -179,23 +224,22 @@ class VolumeController: ObservableObject {
 
     func playbackVolumeUp() {
         if playbackMuted {
-            setPlaybackVolume(VolumeTickScale.levels[1])
+            setPlaybackVolume(volumeForTick(1))
             return
         }
-        let nextTick = min(VolumeTickScale.maximumTick,
-                           VolumeTickScale.tick(for: playbackVolume) + 1)
-        setPlaybackVolume(min(maxVolume, VolumeTickScale.levels[nextTick]))
+        let nextTick = min(maximumVolumeTick, volumeTick(for: playbackVolume) + 1)
+        setPlaybackVolume(volumeForTick(nextTick))
     }
 
     func playbackVolumeDown() {
         if playbackMuted {
             return
         }
-        let nextTick = max(0, VolumeTickScale.tick(for: playbackVolume) - 1)
+        let nextTick = max(0, volumeTick(for: playbackVolume) - 1)
         if nextTick == 0 {
             mute()
         } else {
-            setPlaybackVolume(VolumeTickScale.levels[nextTick])
+            setPlaybackVolume(volumeForTick(nextTick))
         }
     }
 

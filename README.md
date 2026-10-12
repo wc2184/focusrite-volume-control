@@ -1,4 +1,4 @@
-> This branch contains the experimental Ventura build. The unchanged Modern app source remains on `main`.
+> This branch contains the experimental Ventura build. The Modern app source remains on `main`.
 
 <p align="center">
   <img src="docs/logo.png" width="128" alt="Focusrite Volume Control logo">
@@ -15,7 +15,7 @@
 
 A tiny macOS app that lets your Mac’s volume keys control your Focusrite’s volume. Native-style volume HUD, custom shortcuts, and a big, readable Dock volume display. Works with Focusrite Control 2 minimized.
 
-**Heavily based on [Nick Morozov’s Focusrite Volume Control](https://github.com/enum-dot-dev/focusrite-volume-control).** I made this version because the original required macOS Sequoia or later, and I wanted to stay on Sonoma.
+**Heavily based on [Nick Morozov’s Focusrite Volume Control](https://github.com/enum-dot-dev/focusrite-volume-control).** I made this version because the original required macOS Sequoia or later, and I wanted to stay on Sonoma. I also ran into bugs and reliability issues in everyday use, so I focused on making volume control more consistent and resilient, especially during rapid key presses and changes made in Focusrite Control 2.
 
 <p align="center">
   <img src="docs/hud-demo.gif" width="220" alt="Volume HUD increasing from mute to full volume, then decreasing back to mute">
@@ -38,9 +38,11 @@ A tiny macOS app that lets your Mac’s volume keys control your Focusrite’s v
 
 | Build | macOS | Status |
 | --- | --- | --- |
-| [Modern-Sonoma-and-Later](https://github.com/wc2184/focusrite-volume-control/releases/download/v1.0.1/Focusrite-Volume-Control-v1.0.1-Modern-Sonoma-and-Later.zip) | Sonoma 14.5+ | Recommended; the original binary, unchanged |
-| [Ventura-Experimental](https://github.com/wc2184/focusrite-volume-control/releases/download/v1.0.1/Focusrite-Volume-Control-v1.0.1-Ventura-Experimental.zip) | Ventura 13 | Experimental |
-| [Monterey-Experimental](https://github.com/wc2184/focusrite-volume-control/releases/download/v1.0.1/Focusrite-Volume-Control-v1.0.1-Monterey-Experimental.zip) | Monterey 12 | Experimental |
+| [Modern-Sonoma-and-Later](https://github.com/wc2184/focusrite-volume-control/releases/download/v1.1.0/Focusrite-Volume-Control-v1.1.0-Modern-Sonoma-and-Later.zip) | Sonoma 14.5+ | Recommended |
+| [Ventura-Experimental](https://github.com/wc2184/focusrite-volume-control/releases/download/v1.1.0/Focusrite-Volume-Control-v1.1.0-Ventura-Experimental.zip) | Ventura 13 | Experimental |
+| [Monterey-Experimental](https://github.com/wc2184/focusrite-volume-control/releases/download/v1.1.0/Focusrite-Volume-Control-v1.1.0-Monterey-Experimental.zip) | Monterey 12 | Experimental |
+
+The previous [v1.0.1 downloads](https://github.com/wc2184/focusrite-volume-control/releases/tag/v1.0.1) remain available unchanged.
 
 All builds support Apple silicon and Intel Macs and require a compatible Focusrite interface and **Focusrite Control 2**. The experimental builds have passed build and unit checks on Sonoma; they have **not been tested on Ventura or Monterey**, and older FC2 versions may have different controls. Use an FC2 version compatible with your OS and interface.
 
@@ -49,6 +51,7 @@ On Monterey, set up launch at login manually in **System Preferences → Users &
 ## Everyday use
 
 - Volume and mute keys control your interface. Custom shortcuts are available in Preferences.
+- Optional **Perceptual Volume Curve** in Preferences: halfway is **−16 dB**, with discrete steps shared by the keys, slider, and HUD. It defaults off, remembers your choice, and preserves the current volume when switched.
 - The Dock shows the confirmed dB value, a mute icon at −127, or **—** when unavailable.
 - Click the Dock icon to toggle Preferences; click the menu bar icon for the volume popover.
 
@@ -56,9 +59,11 @@ If volume keys stop working after an update, toggle the app off and on in Access
 
 ## How it works
 
-Like Nick’s version, the app controls Focusrite Control 2 through UI automation using AppleScript and macOS’s Accessibility API. When your Focusrite is selected as the sound output, a `CGEventTap` intercepts your volume keys and routes them to FC2’s volume controls instead of macOS’s built-in volume control.
+**Volume changes use cached, native Accessibility controls first.** The app writes directly to Focusrite Control 2 through macOS’s Accessibility API, avoiding the overhead of launching an AppleScript process for each volume change. If that direct path is unavailable, it falls back to AppleScript and re-establishes access to FC2’s controls.
 
-This version builds on that approach for more reliable, consistent control. It writes directly to cached Accessibility controls first, with AppleScript as a fallback. Rapid key presses accumulate through a single volume writer, and older refresh results cannot overwrite pending changes. The HUD responds immediately, while the Dock independently reads FC2’s confirmed volume to keep its display accurate.
+Rapid key presses accumulate through a single volume writer, while older refresh results are prevented from overwriting pending changes. The HUD responds immediately; the Dock independently reads FC2’s confirmed volume to show what the interface has actually accepted.
+
+When your Focusrite is selected as the sound output, a `CGEventTap` intercepts your volume keys and sends them through this control path. Nick’s project provided the foundation; this version adds the cached native write path and stronger state coordination to make everyday volume control more responsive and consistent.
 
 ---
 
