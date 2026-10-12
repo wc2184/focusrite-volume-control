@@ -23,7 +23,7 @@ A tiny macOS app that lets your Mac’s volume keys control your Focusrite’s v
 
 ## Install
 
-1. Download the ZIP from [Releases](https://github.com/wc2184/focusrite-volume-control/releases/latest), unzip it, and move **Focusrite Volume Control.app** to **Applications**.
+1. Choose the ZIP for your macOS version from [Releases](https://github.com/wc2184/focusrite-volume-control/releases/latest), unzip it, and move **Focusrite Volume Control.app** to **Applications**.
 2. This release is not notarized. Before opening it, run this in Terminal to remove quarantine attributes from the downloaded app:
 
    ```sh
@@ -34,7 +34,15 @@ A tiny macOS app that lets your Mac’s volume keys control your Focusrite’s v
 4. Enable **Direct Monitor** in **Focusrite Control 2**, or press the **Direct** button on your physical Focusrite interface.
 5. Keep **Focusrite Control 2** running and select your Focusrite as the Mac’s sound output. Press your volume keys.
 
-Requires **macOS Sonoma 14.5+** and a Focusrite interface supported by **Focusrite Control 2**. The release supports Apple silicon and Intel Macs.
+| Build | macOS | Status |
+| --- | --- | --- |
+| [Modern-Sonoma-and-Later](https://github.com/wc2184/focusrite-volume-control/releases/download/v1.0.1/Focusrite-Volume-Control-v1.0.1-Modern-Sonoma-and-Later.zip) | Sonoma 14.5+ | Recommended; the original binary, unchanged |
+| [Ventura-Experimental](https://github.com/wc2184/focusrite-volume-control/releases/download/v1.0.1/Focusrite-Volume-Control-v1.0.1-Ventura-Experimental.zip) | Ventura 13 | Experimental |
+| [Monterey-Experimental](https://github.com/wc2184/focusrite-volume-control/releases/download/v1.0.1/Focusrite-Volume-Control-v1.0.1-Monterey-Experimental.zip) | Monterey 12 | Experimental |
+
+All builds support Apple silicon and Intel Macs and require a compatible Focusrite interface and **Focusrite Control 2**. The experimental builds have passed build and unit checks on Sonoma; they have **not been tested on Ventura or Monterey**, and older FC2 versions may have different controls. Use an FC2 version compatible with your OS and interface.
+
+On Monterey, set up launch at login manually in **System Preferences → Users & Groups → Login Items**; the app’s automatic toggle is unavailable.
 
 ## Everyday use
 
