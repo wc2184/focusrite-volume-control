@@ -23,8 +23,11 @@ struct PreferencesView: View {
                         // Launch at Login toggle
                         VStack(alignment: .leading, spacing: 2) {
                             Toggle("Launch at Login", isOn: $launchAtLogin.isEnabled)
+                                .disabled(!launchAtLogin.isSupported)
 
-                            Text("Start automatically when you log in")
+                            Text(launchAtLogin.isSupported
+                                 ? "Start automatically when you log in"
+                                 : "On Monterey, add this app in System Preferences → Users & Groups → Login Items.")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                                 .padding(.leading, 20)

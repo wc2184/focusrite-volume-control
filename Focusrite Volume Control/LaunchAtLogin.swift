@@ -12,6 +12,11 @@ import Combine
 class LaunchAtLoginManager: ObservableObject {
     static let shared = LaunchAtLoginManager()
 
+    var isSupported: Bool {
+        if #available(macOS 13.0, *) { return true }
+        return false
+    }
+
     @Published var isEnabled: Bool {
         didSet {
             if isEnabled {
@@ -24,10 +29,18 @@ class LaunchAtLoginManager: ObservableObject {
 
     private init() {
         // Read current state from system
-        isEnabled = SMAppService.mainApp.status == .enabled
+        if #available(macOS 13.0, *) {
+            isEnabled = SMAppService.mainApp.status == .enabled
+        } else {
+            isEnabled = false
+        }
     }
 
     private func enable() {
+        guard #available(macOS 13.0, *) else {
+            DispatchQueue.main.async { self.isEnabled = false }
+            return
+        }
         do {
             try SMAppService.mainApp.register()
         } catch {
@@ -40,6 +53,7 @@ class LaunchAtLoginManager: ObservableObject {
     }
 
     private func disable() {
+        guard #available(macOS 13.0, *) else { return }
         do {
             try SMAppService.mainApp.unregister()
         } catch {

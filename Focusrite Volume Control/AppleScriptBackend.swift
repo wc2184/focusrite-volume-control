@@ -47,7 +47,7 @@ class AppleScriptBackend: VolumeBackend {
                 lastError = msg
                 logger.info("⏳ Connect attempt \(attempt) failed: \(msg, privacy: .public), retrying...")
             }
-            try? await Task.sleep(for: .seconds(1))
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
         }
         return .error(lastError)
     }
@@ -206,12 +206,12 @@ class AppleScriptBackend: VolumeBackend {
 
             // Wait for FC2 to be ready (up to 10 seconds)
             for i in 1...20 {
-                try await Task.sleep(for: .milliseconds(500))
+                try await Task.sleep(nanoseconds: 500_000_000)
                 let ready = try await runOsascript(checkScript) == "true"
                 if ready {
                     logger.info("✅ FC2 launched after \(i * 500)ms")
                     // Give it a moment more to fully initialize UI
-                    try await Task.sleep(for: .milliseconds(1000))
+                    try await Task.sleep(nanoseconds: 1_000_000_000)
                     break
                 }
             }
@@ -234,7 +234,7 @@ class AppleScriptBackend: VolumeBackend {
                     foundWindow = true
                     break
                 }
-                try await Task.sleep(for: .milliseconds(200))
+                try await Task.sleep(nanoseconds: 200_000_000)
             }
             if !foundWindow { throw VolumeBackendError.fc2WindowNotFound }
         }
