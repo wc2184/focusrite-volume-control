@@ -13,7 +13,7 @@
 
 A tiny macOS app that lets your Mac’s volume keys control your Focusrite’s volume. Native-style volume HUD, custom shortcuts, and a big, readable Dock volume display. Works with Focusrite Control 2 minimized.
 
-**Heavily based on [Enum’s Focusrite Volume Control](https://github.com/enum-dot-dev/focusrite-volume-control).** I made this version because the original required macOS Sequoia or later, and I wanted to stay on Sonoma. My changes focus on more reliable, consistent volume control—keeping volume changes and displayed levels in step, even during rapid key presses.
+**Heavily based on [Nick Morozov’s Focusrite Volume Control](https://github.com/enum-dot-dev/focusrite-volume-control).** I made this version because the original required macOS Sequoia or later, and I wanted to stay on Sonoma. My changes focus on more reliable, consistent volume control—keeping volume changes and displayed levels in step, even during rapid key presses.
 
 <p align="center">
   <img src="docs/hud-demo.gif" width="220" alt="Volume HUD increasing from mute to full volume, then decreasing back to mute">
