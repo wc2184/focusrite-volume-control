@@ -40,6 +40,15 @@ struct PreferencesView: View {
                                 .padding(.leading, 20)
                         }
 
+                        VStack(alignment: .leading, spacing: 2) {
+                            Toggle("Perceptual Volume Curve", isOn: $volumeController.usePerceptualVolumeCurve)
+
+                            Text("50% = −16 dB. Volume keys and slider use discrete steps.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .padding(.leading, 20)
+                        }
+
                         // Allow Gain toggle with subtitle
                         VStack(alignment: .leading, spacing: 2) {
                             Toggle("Allow Gain (0 to +6 dB)", isOn: $volumeController.allowGain)

@@ -11,9 +11,10 @@ import Combine
 class VolumeHUDViewModel: ObservableObject {
     @Published var volumeDb: Double = -20
     @Published var isMuted: Bool = false
+    @Published var levels: [Double] = VolumeTickScale.levels
 
     var filledTickCount: Int {
-        isMuted ? 0 : VolumeTickScale.tick(for: volumeDb)
+        isMuted ? 0 : VolumeTickScale.tick(for: volumeDb, levels: levels)
     }
 }
 

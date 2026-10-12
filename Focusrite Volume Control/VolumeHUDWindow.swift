@@ -59,16 +59,16 @@ class VolumeHUDPanel {
     private init() {}
 
     /// Update the HUD values without showing it (for Combine-driven updates while already visible)
-    func update(volume: Double, isMuted: Bool) {
+    func update(volume: Double, isMuted: Bool, levels: [Double] = VolumeTickScale.levels) {
+        viewModel.levels = levels
         viewModel.volumeDb = volume
         viewModel.isMuted = isMuted
     }
 
     /// Show the HUD with current volume state (call from key/hotkey handlers)
-    func show(volume: Double, isMuted: Bool) {
+    func show(volume: Double, isMuted: Bool, levels: [Double] = VolumeTickScale.levels) {
         // Update view model
-        viewModel.volumeDb = volume
-        viewModel.isMuted = isMuted
+        update(volume: volume, isMuted: isMuted, levels: levels)
 
         // Create panel lazily
         if panel == nil {

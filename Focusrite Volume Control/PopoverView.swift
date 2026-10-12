@@ -133,18 +133,19 @@ struct VolumeControlView: View {
             ZStack(alignment: .top) {
                 Slider(
                     value: Binding(
-                        get: { displayValue },
-                        set: { newValue in
-                            // Clamp to 0dB unless gain is allowed
-                            dragValue = volumeController.allowGain ? newValue : min(newValue, 0)
+                        get: { Double(volumeController.volumeTick(for: displayValue)) },
+                        set: { tick in
+                            dragValue = volumeController.volumeForTick(Int(tick.rounded()))
                         }
                     ),
-                    in: -127...6,
+                    in: 0...Double(volumeController.maximumVolumeTick),
+                    step: 1,
                     onEditingChanged: { editing in
                         isDragging = editing
                         if editing {
                             // Start dragging - capture current value
-                            dragValue = volumeController.playbackVolume
+                            dragValue = volumeController.volumeForTick(
+                                volumeController.volumeTick(for: volumeController.playbackVolume))
                             pendingValue = nil
                         } else {
                             // End dragging - commit final value
@@ -160,7 +161,8 @@ struct VolumeControlView: View {
                     // Account for slider thumb padding (thumb doesn't go to edges)
                     let thumbRadius: CGFloat = 10
                     let trackWidth = geo.size.width - 2 * thumbRadius
-                    let tickPositionInTrack = trackWidth * (127.0 / 133.0)  // 0dB is 127 units from -127 in a 133 unit range
+                    let unityTick = volumeController.volumeTick(for: 0)
+                    let tickPositionInTrack = trackWidth * Double(unityTick) / Double(volumeController.maximumVolumeTick)
                     let tickPosition = thumbRadius + tickPositionInTrack
                     Rectangle()
                         .fill(Color.secondary.opacity(0.6))
