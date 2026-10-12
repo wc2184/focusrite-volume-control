@@ -54,9 +54,11 @@ If volume keys stop working after an update, toggle the app off and on in Access
 
 ## How it works
 
-Like Nick’s version, the app controls Focusrite Control 2 through UI automation using AppleScript and macOS’s Accessibility API. When your Focusrite is selected as the sound output, a `CGEventTap` intercepts your volume keys and routes them to FC2’s volume controls instead of macOS’s built-in volume control.
+**Volume changes use cached, native Accessibility controls first.** The app writes directly to Focusrite Control 2 through macOS’s Accessibility API, avoiding the overhead of launching an AppleScript process for each volume change. If that direct path is unavailable, it falls back to AppleScript and re-establishes access to FC2’s controls.
 
-This version builds on that approach for more reliable, consistent control. It writes directly to cached Accessibility controls first, with AppleScript as a fallback. Rapid key presses accumulate through a single volume writer, and older refresh results cannot overwrite pending changes. The HUD responds immediately, while the Dock independently reads FC2’s confirmed volume to keep its display accurate.
+Rapid key presses accumulate through a single volume writer, while older refresh results are prevented from overwriting pending changes. The HUD responds immediately; the Dock independently reads FC2’s confirmed volume to show what the interface has actually accepted.
+
+When your Focusrite is selected as the sound output, a `CGEventTap` intercepts your volume keys and sends them through this control path. Nick’s project provided the foundation; this version adds the cached native write path and stronger state coordination to make everyday volume control more responsive and consistent.
 
 ---
 
