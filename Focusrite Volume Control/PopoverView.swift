@@ -169,7 +169,7 @@ struct VolumeControlView: View {
                 }
             }
             .frame(height: 22)
-            .onChange(of: volumeController.playbackVolume) { _, newValue in
+            .onChange(of: volumeController.playbackVolume) { newValue in
                 // Clear pending when backend confirms (within tolerance)
                 if let pending = pendingValue, abs(newValue - pending) < 1.5 {
                     pendingValue = nil
