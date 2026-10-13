@@ -1,5 +1,3 @@
-> This branch contains the experimental Ventura build. The Modern app source remains on `main`.
-
 <p align="center">
   <img src="docs/logo.png" width="128" alt="Focusrite Volume Control logo">
 </p>
@@ -38,9 +36,9 @@ A tiny macOS app that lets your Mac’s volume keys control your Focusrite’s v
 
 | Build | macOS | Status |
 | --- | --- | --- |
-| [Modern-Sonoma-and-Later](https://github.com/wc2184/focusrite-volume-control/releases/download/v1.1.0/Focusrite-Volume-Control-v1.1.0-Modern-Sonoma-and-Later.zip) | Sonoma 14.5+ | Recommended |
-| [Ventura-Experimental](https://github.com/wc2184/focusrite-volume-control/releases/download/v1.1.0/Focusrite-Volume-Control-v1.1.0-Ventura-Experimental.zip) | Ventura 13 | Experimental |
-| [Monterey-Experimental](https://github.com/wc2184/focusrite-volume-control/releases/download/v1.1.0/Focusrite-Volume-Control-v1.1.0-Monterey-Experimental.zip) | Monterey 12 | Experimental |
+| [Modern-Sonoma-and-Later](https://github.com/wc2184/focusrite-volume-control/releases/download/v1.1.1/Focusrite-Volume-Control-v1.1.1-Modern-Sonoma-and-Later.zip) | Sonoma 14.5+ | Recommended |
+| [Ventura-Experimental](https://github.com/wc2184/focusrite-volume-control/releases/download/v1.1.1/Focusrite-Volume-Control-v1.1.1-Ventura-Experimental.zip) | Ventura 13 | Experimental |
+| [Monterey-Experimental](https://github.com/wc2184/focusrite-volume-control/releases/download/v1.1.1/Focusrite-Volume-Control-v1.1.1-Monterey-Experimental.zip) | Monterey 12 | Experimental |
 
 The previous [v1.0.1 downloads](https://github.com/wc2184/focusrite-volume-control/releases/tag/v1.0.1) remain available unchanged.
 
@@ -50,12 +48,14 @@ On Monterey, set up launch at login manually in **System Preferences → Users &
 
 ## Everyday use
 
-- Volume and mute keys control your interface. Custom shortcuts are available in Preferences.
+- Volume and mute keys control your interface. Custom shortcuts are available in Preferences; navigation keys require Command, Control, or Option.
 - **Perceptual Volume Curve (Recommended)** is on by default: more control at low volumes and smoother changes in loudness, with halfway at **−16 dB**. Keys, slider, and HUD use discrete steps. You can switch it off; your choice is remembered and switching preserves the current volume.
 - The Dock shows the confirmed dB value, a mute icon at −127, or **—** when unavailable.
 - Click the Dock icon to toggle Preferences; click the menu bar icon for the volume popover.
 
 If volume keys stop working after an update, toggle the app off and on in Accessibility settings, then relaunch it.
+
+**v1.1.1 fixes accidental shortcut recording and repairs unsafe saved navigation bindings.** Read the [bug recap and postmortem](docs/shortcut-bug-postmortem.md).
 
 ## How it works
 
