@@ -52,6 +52,8 @@ Earlier volume tests covered tick movement, pending writes, mute, and the percep
 
 Regression tests cover native F12/Left Arrow distinction, navigation-key policy, persisted-setting repair, rejection of unsafe assignments, cancellation and focus release, completion and repeat handling, focus-loss cancellation, and real AppKit event routing while shortcuts are added, recorded, and reset. The original volume-controller tests remain in place.
 
+All 20 tests passed for each of the three source variants on Sonoma 14.5. Live checks on the installed Modern app also verified cancellation followed by Left Arrow without a new assignment or volume change, ordinary arrows while another app was active, media-key changes with FC2 minimized, the HUD's position on the pointer's display, and the Dock's confirmed value. The interface volume was restored to its original −16 dB after the checks.
+
 Modern, Ventura, and Monterey packages include the correction. Older published packages contain the recorder defect; their release notes identify v1.1.1 as the replacement. The preserved v1.0.1 Modern archive remains byte-identical as requested.
 
 Ventura and Monterey builds remain experimental: build and test checks run on Sonoma do not establish behavior on those older operating systems.
