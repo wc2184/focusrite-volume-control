@@ -6,6 +6,26 @@ import class SwiftUI.NSHostingView
 @testable import Focusrite_Volume_Control
 
 final class Focusrite_Volume_ControlTests: XCTestCase {
+    @MainActor
+    func testHUDIsVisibleWithoutActivatingItsApplication() throws {
+        let app = NSApplication.shared
+        app.deactivate()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+        VolumeHUDPanel.shared.show(volume: -16, isMuted: false)
+        defer { VolumeHUDPanel.shared.dismiss() }
+        let panel = try XCTUnwrap(app.windows.compactMap { $0 as? VolumeHUDWindow }.first)
+        RunLoop.main.run(until: Date().addingTimeInterval(0.1))
+        XCTAssertFalse(app.isActive, "Showing the HUD must not activate its app")
+        XCTAssertTrue(panel.isVisible)
+        XCTAssertTrue(panel.isOnActiveSpace)
+        XCTAssertTrue(panel.occlusionState.contains(.visible), "An ordered HUD must actually be onscreen")
+        XCTAssertFalse(panel.canBecomeKey)
+        XCTAssertFalse(panel.canBecomeMain)
+        XCTAssertTrue(panel.collectionBehavior.contains(.canJoinAllSpaces))
+        XCTAssertFalse(panel.hidesOnDeactivate)
+        XCTAssertFalse(panel.canHide)
+    }
+
     func testNativeF12AndLeftArrowAreDistinctAndOnlyF12IsAllowedBare() {
         let left = KeyboardShortcut(keyCode: UInt16(kVK_LeftArrow), modifiers: [])
         let f12 = KeyboardShortcut(keyCode: UInt16(kVK_F12), modifiers: [])
