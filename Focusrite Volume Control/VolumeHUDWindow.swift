@@ -117,6 +117,10 @@ class VolumeHUDPanel {
         panel.isOpaque = false
         panel.backgroundColor = NSColor.clear
         panel.hasShadow = false
+        // A global HUD must remain eligible while another app/Space is active.
+        // NSPanel otherwise defaults to hiding when its application deactivates.
+        panel.hidesOnDeactivate = false
+        panel.canHide = false
         panel.level = NSWindow.Level.screenSaver  // Above everything including fullscreen
         panel.collectionBehavior = NSWindow.CollectionBehavior([.canJoinAllSpaces, .fullScreenAuxiliary, .stationary])
         panel.ignoresMouseEvents = true
