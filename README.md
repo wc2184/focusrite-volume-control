@@ -36,9 +36,9 @@ A tiny macOS app that lets your Mac’s volume keys control your Focusrite’s v
 
 | Build | macOS | Status |
 | --- | --- | --- |
-| [Modern-Sonoma-and-Later](https://github.com/wc2184/focusrite-volume-control/releases/download/v1.1.1/Focusrite-Volume-Control-v1.1.1-Modern-Sonoma-and-Later.zip) | Sonoma 14.5+ | Recommended |
-| [Ventura-Experimental](https://github.com/wc2184/focusrite-volume-control/releases/download/v1.1.1/Focusrite-Volume-Control-v1.1.1-Ventura-Experimental.zip) | Ventura 13 | Experimental |
-| [Monterey-Experimental](https://github.com/wc2184/focusrite-volume-control/releases/download/v1.1.1/Focusrite-Volume-Control-v1.1.1-Monterey-Experimental.zip) | Monterey 12 | Experimental |
+| [Modern-Sonoma-and-Later](https://github.com/wc2184/focusrite-volume-control/releases/download/v1.1.2/Focusrite-Volume-Control-v1.1.2-Modern-Sonoma-and-Later.zip) | Sonoma 14.5+ | Recommended |
+| [Ventura-Experimental](https://github.com/wc2184/focusrite-volume-control/releases/download/v1.1.2/Focusrite-Volume-Control-v1.1.2-Ventura-Experimental.zip) | Ventura 13 | Experimental |
+| [Monterey-Experimental](https://github.com/wc2184/focusrite-volume-control/releases/download/v1.1.2/Focusrite-Volume-Control-v1.1.2-Monterey-Experimental.zip) | Monterey 12 | Experimental |
 
 The previous [v1.0.1 downloads](https://github.com/wc2184/focusrite-volume-control/releases/tag/v1.0.1) remain available unchanged.
 
@@ -56,6 +56,8 @@ On Monterey, set up launch at login manually in **System Preferences → Users &
 If volume keys stop working after an update, toggle the app off and on in Accessibility settings, then relaunch it.
 
 **v1.1.1 fixes accidental shortcut recording and repairs unsafe saved navigation bindings.** Read the [bug recap and postmortem](docs/shortcut-bug-postmortem.md).
+
+**v1.1.2 fixes a HUD visibility issue when another app or desktop is active.** [What changed](docs/hud-visibility-fix.md).
 
 ## How it works
 
