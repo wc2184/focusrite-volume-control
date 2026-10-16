@@ -10,4 +10,6 @@ The fix explicitly sets `hidesOnDeactivate = false` and `canHide = false` for th
 
 An isolated native comparison reproduced the original failure and verified the corrected HUD on both Desktop 1 and Desktop 2 with its app inactive, without changing interface volume. A regression test also checks actual onscreen visibility while the app is inactive, all-Spaces membership, and that showing the HUD does not activate the app or take keyboard focus.
 
+All 21 tests passed for each source variant on Sonoma 14.5. The installed Modern app was also checked on both desktops while hidden and inactive: real media keys changed FC2's volume and the HUD appeared onscreen. The exact starting volume, app visibility, and Desktop 2 were restored afterward. Ventura and Monterey remain experimental and were not tested on their target operating systems.
+
 Apple references: [panel hiding behavior](https://developer.apple.com/documentation/appkit/nswindow/hidesondeactivate), [all-Spaces behavior](https://developer.apple.com/documentation/appkit/nswindow/collectionbehavior-swift.struct/canjoinallspaces), and [active-Space membership](https://developer.apple.com/documentation/appkit/nswindow/isonactivespace).
