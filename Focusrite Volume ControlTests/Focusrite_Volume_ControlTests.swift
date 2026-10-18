@@ -13,7 +13,7 @@ final class Focusrite_Volume_ControlTests: XCTestCase {
         RunLoop.main.run(until: Date().addingTimeInterval(0.05))
         VolumeHUDPanel.shared.show(volume: -16, isMuted: false)
         defer { VolumeHUDPanel.shared.dismiss() }
-        let panel = try XCTUnwrap(app.windows.compactMap { $0 as? VolumeHUDWindow }.first)
+        let panel = try XCTUnwrap(visibleHUD())
         RunLoop.main.run(until: Date().addingTimeInterval(0.1))
         XCTAssertFalse(app.isActive, "Showing the HUD must not activate its app")
         XCTAssertTrue(panel.isVisible)
@@ -24,6 +24,84 @@ final class Focusrite_Volume_ControlTests: XCTestCase {
         XCTAssertTrue(panel.collectionBehavior.contains(.canJoinAllSpaces))
         XCTAssertFalse(panel.hidesOnDeactivate)
         XCTAssertFalse(panel.canHide)
+    }
+
+    @MainActor
+    func testHUDDismissalRetiresNativeWindowAndNextActionCreatesVisibleReplacement() throws {
+        let hud = VolumeHUDPanel.shared
+        hud.show(volume: -16, isMuted: false)
+        let original = try XCTUnwrap(visibleHUD())
+        hud.dismiss()
+        XCTAssertFalse(original.isVisible)
+        XCTAssertNil(visibleHUD())
+
+        hud.show(volume: -20, isMuted: false)
+        defer { hud.dismiss() }
+        let replacement = try XCTUnwrap(visibleHUD())
+        XCTAssertFalse(original === replacement)
+        RunLoop.main.run(until: Date().addingTimeInterval(0.1))
+        XCTAssertTrue(replacement.occlusionState.contains(.visible))
+        XCTAssertTrue(replacement.isOnActiveSpace)
+
+        // Rapid keys reuse the visible panel instead of flickering/rebuilding.
+        hud.show(volume: -16, isMuted: false)
+        XCTAssertTrue(visibleHUD() === replacement)
+    }
+
+    @MainActor
+    func testHUDEnvironmentChangesRetireWindowWithoutReopeningIt() throws {
+        let hud = VolumeHUDPanel.shared
+        defer { hud.dismiss() }
+        let workspaceCenter = NSWorkspace.shared.notificationCenter
+        var events = [NSWorkspace.activeSpaceDidChangeNotification,
+                      NSWorkspace.willSleepNotification,
+                      NSWorkspace.didWakeNotification,
+                      NSWorkspace.screensDidSleepNotification,
+                      NSWorkspace.screensDidWakeNotification,
+                      NSWorkspace.sessionDidResignActiveNotification,
+                      NSWorkspace.sessionDidBecomeActiveNotification]
+            .map { (workspaceCenter, $0) }
+        events.append((.default, NSApplication.didChangeScreenParametersNotification))
+        for (center, name) in events {
+            hud.show(volume: -16, isMuted: false)
+            let original = try XCTUnwrap(visibleHUD())
+            center.post(name: name, object: nil)
+            XCTAssertFalse(original.isVisible, "\(name) must retire stale Space membership")
+            XCTAssertNil(visibleHUD(), "An environment change must not open a HUD")
+
+            hud.show(volume: -20, isMuted: false)
+            let replacement = try XCTUnwrap(visibleHUD())
+            XCTAssertFalse(original === replacement)
+            RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+            XCTAssertTrue(replacement.occlusionState.contains(.visible), "\(name)")
+        }
+    }
+
+    @MainActor
+    func testHUDRetiredTimerCannotHideReplacementAndLatestPressExtendsLifetime() throws {
+        let hud = VolumeHUDPanel.shared
+        defer { hud.dismiss() }
+        hud.show(volume: -16, isMuted: false)
+        let original = try XCTUnwrap(visibleHUD())
+        RunLoop.main.run(until: Date().addingTimeInterval(1.1))
+        NSWorkspace.shared.notificationCenter.post(name: NSWorkspace.activeSpaceDidChangeNotification,
+                                                   object: nil)
+        hud.show(volume: -20, isMuted: false)
+        let replacement = try XCTUnwrap(visibleHUD())
+        XCTAssertFalse(original === replacement)
+        RunLoop.main.run(until: Date().addingTimeInterval(1.1))
+        XCTAssertTrue(replacement.isVisible, "The retired panel's timer must not dismiss a new HUD")
+        hud.show(volume: -16, isMuted: false)
+        RunLoop.main.run(until: Date().addingTimeInterval(1.1))
+        XCTAssertTrue(replacement.isVisible, "The latest key press must reset dismissal")
+        RunLoop.main.run(until: Date().addingTimeInterval(1.0))
+        XCTAssertFalse(replacement.isVisible)
+        XCTAssertNil(visibleHUD())
+    }
+
+    @MainActor
+    private func visibleHUD() -> VolumeHUDWindow? {
+        NSApplication.shared.windows.compactMap { $0 as? VolumeHUDWindow }.first { $0.isVisible }
     }
 
     func testNativeF12AndLeftArrowAreDistinctAndOnlyF12IsAllowedBare() {
