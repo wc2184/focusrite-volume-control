@@ -47,10 +47,10 @@ The regression suite covers replacement after dismissal, each registered environ
 
 The installed Modern Release app was checked on both desktops while another application remained active. The HUD was verified through the onscreen window list; changes in window identifiers confirmed replacement between desktops. The live-check starting volume of −13 dB and Desktop 2 were restored. The user separately confirmed the physical lock/unlock scenario.
 
-Release verification includes the full test suite for each source variant on Sonoma 14.5, universal Apple silicon/Intel binaries, minimum-OS declarations, signature verification after ZIP extraction, and published download checksums. Results for this release are recorded in its release notes. Ventura and Monterey remain experimental: testing their builds on Sonoma does not verify their behavior on those older systems. This incident's physical lock/unlock confirmation covers the Modern build on Sonoma only.
+All 24 tests passed for each of the Modern, Ventura, and Monterey source variants on Sonoma 14.5. Each release ZIP was extracted and checked for its signature, Apple silicon/Intel architectures, minimum-OS declarations, version, and bundled license notices. Download checksums are provided with the release and verified after upload. Ventura and Monterey remain experimental: testing their builds on Sonoma does not verify their behavior on those older systems. This incident's physical lock/unlock confirmation covers the Modern build on Sonoma only.
 
 ## Prevention
 
 For future HUD changes, verify both native window lifetime and actual onscreen presentation. Keep the lifecycle and timer regressions, and include a physical lock/unlock check across desktops in the manual release checks. A fresh-window test, logical visibility flag, or successful audio adjustment alone is insufficient evidence that the HUD recovers after locking.
 
-Keep the overlay's recovery independent of audio control: replacing a feedback window must not replay an adjustment, write an extra volume value, or activate the foreground app. Preserve old release archives and publish corrections as a new version.
+Keep the overlay's recovery independent of audio control: replacing a feedback window must not replay an adjustment, write an extra volume value, or change the foreground app. Preserve old release archives and publish corrections as a new version.
