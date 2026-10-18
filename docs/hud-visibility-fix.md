@@ -13,3 +13,17 @@ An isolated native comparison reproduced the original failure and verified the c
 All 21 tests passed for each source variant on Sonoma 14.5. The installed Modern app was also checked on both desktops while hidden and inactive: real media keys changed FC2's volume and the HUD appeared onscreen. The exact starting volume, app visibility, and Desktop 2 were restored afterward. Ventura and Monterey remain experimental and were not tested on their target operating systems.
 
 Apple references: [panel hiding behavior](https://developer.apple.com/documentation/appkit/nswindow/hidesondeactivate), [all-Spaces behavior](https://developer.apple.com/documentation/appkit/nswindow/collectionbehavior-swift.struct/canjoinallspaces), and [active-Space membership](https://developer.apple.com/documentation/appkit/nswindow/isonactivespace).
+
+## Lock, wake, and desktop recovery
+
+Follow-up fix in v1.1.3 · October 18, 2026
+
+See the [lock/unlock recovery postmortem](hud-lock-recovery-postmortem.md) for the evidence, remaining uncertainty, verification gap, and prevention measures.
+
+The earlier fix did not cover a long-lived HUD window becoming invisible after locking and returning to another desktop. On the affected Mac, a media-key press changed the confirmed FC2 volume on Desktop 2, but the original panel was absent from WindowServer's onscreen window list despite correct coordinates and full opacity. A newly created panel with the same appearance and Space flags was visible on that desktop without activating its app.
+
+The HUD now closes and releases its native window after the two-second dismissal instead of retaining a hidden window indefinitely. The next adjustment creates a fresh window. Repeated adjustments while the HUD is visible continue to reuse that window and reset its dismissal timer, preserving immediate feedback without rebuilding on every repeat.
+
+Desktop changes, display reconfiguration, display/system sleep and wake, and user-session transitions also discard the old window and cancel its timer. These notifications never show a HUD by themselves. Closing the window after ordinary dismissal covers lock cycles that do not deliver a sleep or user-session notification. The existing deactivation fix, click-through behavior, pointer-display placement, all-Spaces/fullscreen flags, geometry, and audio control path remain intact.
+
+All 24 tests passed on Sonoma 14.5. The added tests check actual visibility of replacement windows, each registered environment notification, reuse during rapid adjustments, and cancellation of an old window's dismissal timer. The universal Release build passes signature verification. Installed Modern v1.1.3 was verified with real media events on Desktop 2, Desktop 1, and back on Desktop 2: each HUD was onscreen while another app remained active. Window identifiers changed between desktops, and no HUD window remained after dismissal. The starting live-check volume (−13 dB), foreground application, and Desktop 2 were restored. The user also completed a physical lock/unlock cycle and confirmed that the HUD appears on Desktop 2 afterward. These live checks cover Sonoma 14.5; compatibility variants and other operating systems were not tested for this follow-up.

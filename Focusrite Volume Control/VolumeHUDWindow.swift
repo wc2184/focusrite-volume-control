@@ -55,8 +55,32 @@ class VolumeHUDPanel {
     private let viewModel = VolumeHUDViewModel()
     private var dismissTimer: Timer?
     private let dismissDelay: TimeInterval = 2.0
+    private var environmentObservers: [(NotificationCenter, NSObjectProtocol)] = []
 
-    private init() {}
+    private init() {
+        // WindowServer can leave a long-lived all-Spaces panel attached to an
+        // earlier desktop after locking, waking, or reconfiguring displays.
+        // Retire it on transitions; only a new volume action may show a HUD.
+        let workspaceCenter = NSWorkspace.shared.notificationCenter
+        for name in [NSWorkspace.activeSpaceDidChangeNotification,
+                     NSWorkspace.willSleepNotification,
+                     NSWorkspace.didWakeNotification,
+                     NSWorkspace.screensDidSleepNotification,
+                     NSWorkspace.screensDidWakeNotification,
+                     NSWorkspace.sessionDidResignActiveNotification,
+                     NSWorkspace.sessionDidBecomeActiveNotification] {
+            observeEnvironmentChange(name, center: workspaceCenter)
+        }
+        observeEnvironmentChange(NSApplication.didChangeScreenParametersNotification,
+                                 center: .default)
+    }
+
+    deinit {
+        dismissTimer?.invalidate()
+        for (center, observer) in environmentObservers {
+            center.removeObserver(observer)
+        }
+    }
 
     /// Update the HUD values without showing it (for Combine-driven updates while already visible)
     func update(volume: Double, isMuted: Bool, levels: [Double] = VolumeTickScale.levels) {
@@ -95,13 +119,26 @@ class VolumeHUDPanel {
 
     /// Hide the HUD after the most recent key press.
     func dismiss() {
-        guard let panel else { return }
         dismissTimer?.invalidate()
         dismissTimer = nil
+        guard let panel else { return }
+        self.panel = nil
         panel.orderOut(nil)
+        // A hidden panel must not survive a lock/unlock cycle. A fresh native
+        // window gets fresh Space membership on the next volume action, even
+        // when locking did not produce a sleep or session notification.
+        panel.close()
     }
 
     // MARK: - Private
+
+    private func observeEnvironmentChange(_ name: Notification.Name,
+                                          center: NotificationCenter) {
+        let observer = center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+            self?.dismiss()
+        }
+        environmentObservers.append((center, observer))
+    }
 
     private func createPanel() {
         let hudView = VolumeHUDView(viewModel: viewModel)
@@ -115,6 +152,7 @@ class VolumeHUDPanel {
         )
 
         panel.isOpaque = false
+        panel.isReleasedWhenClosed = false
         panel.backgroundColor = NSColor.clear
         panel.hasShadow = false
         // A global HUD must remain eligible while another app/Space is active.
