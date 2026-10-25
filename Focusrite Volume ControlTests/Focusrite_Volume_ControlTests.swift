@@ -565,6 +565,25 @@ final class Focusrite_Volume_ControlTests: XCTestCase {
         XCTAssertEqual(reported, [-16, controller.volumeForTick(9), -127, controller.volumeForTick(9)])
     }
 
+    func testPressesDuringFC2RestartAreHeldThenOnlyTheLatestIsWritten() {
+        let backend = RecordingBackend()
+        let controller = VolumeController(backend: backend, preferences: nil)
+        controller.holdsWrites = true
+        controller.setPlaybackVolume(-16)
+        controller.playbackVolumeUp()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.1))
+        XCTAssertEqual(controller.playbackVolume, controller.volumeForTick(9), "The HUD still follows presses")
+        XCTAssertTrue(backend.writes.isEmpty, "Nothing reaches a relaunching FC2")
+
+        controller.reapplyAfterFC2Restart(controller.playbackVolume)
+        let deadline = Date().addingTimeInterval(2)
+        while backend.writes.isEmpty && Date() < deadline {
+            RunLoop.main.run(until: Date().addingTimeInterval(0.02))
+        }
+        XCTAssertFalse(controller.holdsWrites)
+        XCTAssertEqual(backend.writes, [controller.volumeForTick(9)])
+    }
+
     func testReapplyAfterFC2RestartRestoresTheChosenLevel() {
         let controller = VolumeController(backend: StubBackend(), preferences: nil)
         controller.reapplyAfterFC2Restart(-13)
@@ -577,6 +596,20 @@ private final class KeyEventSinkView: NSView {
     var receivedKeys: [UInt16] = []
     override var acceptsFirstResponder: Bool { true }
     override func keyDown(with event: NSEvent) { receivedKeys.append(event.keyCode) }
+}
+
+private final class RecordingBackend: VolumeBackend {
+    private let subject = CurrentValueSubject<VolumeState, Never>(VolumeState())
+    var statePublisher: AnyPublisher<VolumeState, Never> { subject.eraseToAnyPublisher() }
+    var writes: [Double] = []
+    func connect() async -> VolumeResult { .success }
+    func disconnect() {}
+    func refresh() async -> VolumeResult { .success }
+    func setPlaybackVolume(_ db: Double, ensureDirectMonitor: Bool) async -> VolumeResult {
+        await MainActor.run { writes.append(db) }
+        return .success
+    }
+    func setDirectMonitorEnabled(_ enabled: Bool) async -> VolumeResult { .success }
 }
 
 private final class StubBackend: VolumeBackend {
