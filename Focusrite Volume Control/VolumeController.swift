@@ -72,6 +72,9 @@ class VolumeController: ObservableObject {
     @Published var usePerceptualVolumeCurve: Bool {
         didSet { preferences?.set(usePerceptualVolumeCurve, forKey: "usePerceptualVolumeCurve") }
     }
+    @Published var autoRestartFC2: Bool {
+        didSet { preferences?.set(autoRestartFC2, forKey: "autoRestartFC2") }
+    }
     let minVolume: Double = -127.0  // FC2's actual minimum
 
     /// Maximum volume depends on allowGain setting
@@ -115,6 +118,7 @@ class VolumeController: ObservableObject {
         self.backend = backend
         self.preferences = preferences
         self.usePerceptualVolumeCurve = preferences?.object(forKey: "usePerceptualVolumeCurve") as? Bool ?? true
+        self.autoRestartFC2 = preferences?.object(forKey: "autoRestartFC2") as? Bool ?? true
         setupBindings()
     }
 
@@ -180,6 +184,13 @@ class VolumeController: ObservableObject {
     func poll() {
         guard Date().timeIntervalSince(lastVolumeInteraction) > 2 else { return }
         refresh()
+    }
+
+    /// A relaunched FC2 shows the interface's last accepted level. Reapply the
+    /// level chosen while FC2 could not reach the hardware.
+    func reapplyAfterFC2Restart(_ volume: Double) {
+        disconnect()
+        setPlaybackVolume(volume)
     }
 
     // MARK: - Playback Volume Control
