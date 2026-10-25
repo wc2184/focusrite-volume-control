@@ -111,6 +111,8 @@ class VolumeController: ObservableObject {
     private var volumeWriteTask: Task<Void, Never>?
     private var isConnecting = false
     private var lastVolumeInteraction = Date.distantPast
+    /// Reports each level the user sets, including while FC2 cannot reach the interface.
+    var onUserVolumeSet: ((Double) -> Void)?
 
     // MARK: - Initialization
 
@@ -205,6 +207,7 @@ class VolumeController: ObservableObject {
         playbackMuted = clamped <= minVolume
         pendingVolume = clamped
         lastVolumeInteraction = Date()
+        onUserVolumeSet?(clamped)
 
         // A single writer preserves key-press order. If more presses arrive while
         // FC2 is busy, send only the newest accumulated value next.

@@ -138,17 +138,23 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         fc2Health.onRestartNeeded = { [weak self] in
             self?.restartFC2()
         }
+        // Presses during a relaunch are newer than the level saved before it.
+        volumeController.onUserVolumeSet = { [weak self] level in
+            guard let self, self.volumeToReapply != nil else { return }
+            self.volumeToReapply = level
+        }
         fc2Health.$isUnresponsive
             .removeDuplicates()
             .receive(on: DispatchQueue.main)
             .sink { [weak self] unresponsive in
                 guard let self else { return }
                 self.confirmedDockVolume.isFC2Unresponsive = unresponsive
-                guard !unresponsive, let volume = self.volumeToReapply else { return }
-                self.volumeToReapply = nil
+                guard !unresponsive, self.volumeToReapply != nil else { return }
                 // The mount is logged before FC2 is ready to accept writes.
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
-                    self?.volumeController.reapplyAfterFC2Restart(volume)
+                    guard let self, let volume = self.volumeToReapply else { return }
+                    self.volumeToReapply = nil
+                    self.volumeController.reapplyAfterFC2Restart(volume)
                 }
             }
             .store(in: &cancellables)
