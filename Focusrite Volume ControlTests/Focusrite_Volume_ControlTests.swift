@@ -430,6 +430,136 @@ final class Focusrite_Volume_ControlTests: XCTestCase {
         XCTAssertEqual(controller.maximumVolumeTick, 16)
         XCTAssertEqual(controller.volumeForTick(8), -16)
     }
+
+    // MARK: - FC2 health
+
+    private let peakTimeout = "25 Oct 2026 2:15:46.661 [pal] ERROR: error fetching peaks: Encountered an error whilst fetching peaks: 1"
+    private let mixerTimeout = "25 Oct 2026 5:02:21.786 [pal] ERROR: error setting mixer coefficients: Encountered an error whilst setting mixer coefficients: 1"
+    private let unplugError = "25 Oct 2026 1:08:03.118 [pal] ERROR: error setting mixer coefficients: Encountered an error whilst setting mixer coefficients: 11"
+    private let mounted = "25 Oct 2026 8:18:50.229 [ada] INFO: Device mounted (0x12e6920d0)"
+
+    private func healthMonitor(clock: @escaping () -> Date,
+                               logURL: URL = FileManager.default.temporaryDirectory
+                                   .appendingPathComponent("missing-fc2.log")) -> FC2HealthMonitor {
+        FC2HealthMonitor(logURL: logURL, now: clock)
+    }
+
+    func testFC2OutageNeedsSustainedTimeoutsAndIgnoresUnplugAndIsolatedErrors() {
+        var now = Date(timeIntervalSince1970: 0)
+        let monitor = healthMonitor(clock: { now })
+        var restarts = 0
+        monitor.onRestartNeeded = { restarts += 1 }
+
+        // Unplugging logs code 11; a lone timeout happens about once a day.
+        for _ in 0..<5 { monitor.ingest(unplugError) }
+        monitor.ingest(peakTimeout)
+        now += 40
+        monitor.ingest(peakTimeout)
+        now += 40
+        monitor.ingest(peakTimeout)
+        XCTAssertFalse(monitor.isUnresponsive)
+        XCTAssertEqual(restarts, 0)
+
+        // A real outage logs a timeout roughly every 9 seconds.
+        now += 9
+        monitor.ingest(mixerTimeout)
+        now += 9
+        monitor.ingest(peakTimeout)
+        XCTAssertTrue(monitor.isUnresponsive)
+        XCTAssertEqual(restarts, 1)
+    }
+
+    func testFC2RecoversOnlyWhenTheInterfaceIsMountedAgain() {
+        var now = Date(timeIntervalSince1970: 0)
+        let monitor = healthMonitor(clock: { now })
+        for _ in 0..<3 { now += 9; monitor.ingest(peakTimeout) }
+        XCTAssertTrue(monitor.isUnresponsive)
+
+        monitor.ingest("25 Oct 2026 8:18:49.260 Application initialised: Focusrite Control 2 1.1081.0.0 (Mac OSX 14.5)")
+        XCTAssertTrue(monitor.isUnresponsive, "FC2 has not reopened the interface yet")
+        monitor.ingest("25 Oct 2026 8:18:03.117 [ada] INFO: Device unmounted (0x15b17c460)")
+        XCTAssertTrue(monitor.isUnresponsive)
+        monitor.ingest(mounted)
+        XCTAssertFalse(monitor.isUnresponsive)
+    }
+
+    func testFC2RestartsAreRateLimitedAndCanBeDisabled() {
+        var now = Date(timeIntervalSince1970: 0)
+        let monitor = healthMonitor(clock: { now })
+        var restarts = 0
+        var allowed = false
+        monitor.isRestartAllowed = { allowed }
+        monitor.onRestartNeeded = { restarts += 1 }
+
+        for _ in 0..<5 { now += 9; monitor.ingest(peakTimeout) }
+        XCTAssertTrue(monitor.isUnresponsive, "Detection still drives the Dock when restarts are off")
+        XCTAssertEqual(restarts, 0)
+
+        allowed = true
+        now += 9; monitor.ingest(peakTimeout)
+        XCTAssertEqual(restarts, 1)
+        // Errors from a relaunch that did not help wait for the cooldown.
+        for _ in 0..<10 { now += 9; monitor.ingest(peakTimeout) }
+        XCTAssertEqual(restarts, 1)
+
+        // At most three restarts per hour, then leave FC2 alone.
+        for _ in 0..<60 { now += 9; monitor.ingest(peakTimeout) }
+        XCTAssertEqual(restarts, 3)
+        for _ in 0..<100 { now += 9; monitor.ingest(peakTimeout) }
+        XCTAssertEqual(restarts, 3)
+        now += 3600
+        for _ in 0..<3 { now += 9; monitor.ingest(peakTimeout) }
+        XCTAssertEqual(restarts, 4)
+    }
+
+    func testFC2LogTailingIgnoresHistoryAndJoinsPartialLines() throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("fc2-health-\(UUID().uuidString).log")
+        defer { try? FileManager.default.removeItem(at: url) }
+        // Past outages already in the log must not trigger anything.
+        try (Array(repeating: peakTimeout, count: 10).joined(separator: "\n") + "\n")
+            .write(to: url, atomically: true, encoding: .utf8)
+
+        var now = Date(timeIntervalSince1970: 0)
+        let monitor = healthMonitor(clock: { now }, logURL: url)
+        monitor.start()
+        defer { monitor.stop() }
+        monitor.poll()
+        XCTAssertFalse(monitor.isUnresponsive)
+
+        let handle = try FileHandle(forWritingTo: url)
+        defer { try? handle.close() }
+        try handle.seekToEnd()
+        let split = peakTimeout.index(peakTimeout.startIndex, offsetBy: 30)
+        try handle.write(contentsOf: Data((peakTimeout + "\n" + peakTimeout + "\n" + peakTimeout[..<split]).utf8))
+        monitor.poll()
+        XCTAssertFalse(monitor.isUnresponsive, "Only two complete lines so far")
+        now += 9
+        try handle.write(contentsOf: Data((peakTimeout[split...] + "\n").utf8))
+        monitor.poll()
+        XCTAssertTrue(monitor.isUnresponsive)
+    }
+
+    func testDockHidesFC2SliderValueWhileFC2CannotReachTheInterface() {
+        XCTAssertEqual(ConfirmedDockVolume.displayedValue(confirmed: "-16dB", fc2Unresponsive: false), "-16dB")
+        XCTAssertNil(ConfirmedDockVolume.displayedValue(confirmed: "-16dB", fc2Unresponsive: true))
+    }
+
+    func testAutoRestartFC2DefaultsOnAndPersists() throws {
+        XCTAssertTrue(VolumeController(backend: StubBackend(), preferences: nil).autoRestartFC2)
+        let suite = "FocusriteVolumeControlTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        VolumeController(backend: StubBackend(), preferences: defaults).autoRestartFC2 = false
+        XCTAssertFalse(VolumeController(backend: StubBackend(), preferences: defaults).autoRestartFC2)
+    }
+
+    func testReapplyAfterFC2RestartRestoresTheChosenLevel() {
+        let controller = VolumeController(backend: StubBackend(), preferences: nil)
+        controller.reapplyAfterFC2Restart(-13)
+        XCTAssertEqual(controller.playbackVolume, -13)
+        XCTAssertFalse(controller.playbackMuted)
+    }
 }
 
 private final class KeyEventSinkView: NSView {

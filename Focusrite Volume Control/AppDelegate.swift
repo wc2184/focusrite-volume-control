@@ -45,6 +45,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var hotkeyManager: HotkeyManager!
     private var syncTimer: Timer?
     private let confirmedDockVolume = ConfirmedDockVolume()
+    private let fc2Health = FC2HealthMonitor()
+    private var isRestartingFC2 = false
+    private var volumeToReapply: Double?
     private var dockClickTimer: Timer?
     private var wasLeftMousePressed = false
     private var pendingDockClose: Bool?
@@ -104,10 +107,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
             .store(in: &cancellables)
 
+        setupFC2HealthMonitor()
+
         // Keep the displayed value aligned with edits in FC2 and recover after
         // FC2 restarts or its window changes.
         syncTimer = Timer(timeInterval: 3, repeats: true) { [weak self] _ in
-            guard let self, self.isFocusriteActive else { return }
+            // A relaunch in progress must not be raced by a second launch.
+            guard let self, self.isFocusriteActive, !self.isRestartingFC2 else { return }
             if self.volumeController.isConnected {
                 self.volumeController.poll()
             } else {
@@ -121,6 +127,44 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     // MARK: - Onboarding
+
+    // MARK: - FC2 Recovery
+
+    private func setupFC2HealthMonitor() {
+        fc2Health.isRestartAllowed = { [weak self] in
+            guard let self else { return false }
+            return self.volumeController.autoRestartFC2 && self.isFocusriteActive && !self.isRestartingFC2
+        }
+        fc2Health.onRestartNeeded = { [weak self] in
+            self?.restartFC2()
+        }
+        fc2Health.$isUnresponsive
+            .removeDuplicates()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] unresponsive in
+                guard let self else { return }
+                self.confirmedDockVolume.isFC2Unresponsive = unresponsive
+                guard !unresponsive, let volume = self.volumeToReapply else { return }
+                self.volumeToReapply = nil
+                // The mount is logged before FC2 is ready to accept writes.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+                    self?.volumeController.reapplyAfterFC2Restart(volume)
+                }
+            }
+            .store(in: &cancellables)
+        fc2Health.start()
+    }
+
+    private func restartFC2() {
+        isRestartingFC2 = true
+        volumeToReapply = volumeController.playbackVolume
+        Task { @MainActor [weak self] in
+            let relaunched = await FC2Relauncher.restartMinimized()
+            guard let self else { return }
+            self.isRestartingFC2 = false
+            if !relaunched { self.volumeToReapply = nil }
+        }
+    }
 
     private func showOnboardingIfNeeded() {
         guard !areAllPermissionsGranted() else {
@@ -156,6 +200,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         dockClickTimer?.invalidate()
         confirmedDockVolume.stop()
+        fc2Health.stop()
         syncTimer?.invalidate()
         volumeController.disconnect()
         removeMediaKeyTap()

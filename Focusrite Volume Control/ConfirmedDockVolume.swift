@@ -15,6 +15,16 @@ final class ConfirmedDockVolume {
     private var readQueued = false
     private var timer: Timer?
     private var tileView: ConfirmedDockTileView?
+    private var latestConfirmed: String?
+
+    /// FC2 can report a slider value it never delivered to the interface.
+    /// Main thread only.
+    var isFC2Unresponsive = false {
+        didSet {
+            guard isFC2Unresponsive != oldValue else { return }
+            showConfirmed(latestConfirmed)
+        }
+    }
 
     // Accessed only on queue.
     private var processID: pid_t = 0
@@ -61,11 +71,21 @@ final class ConfirmedDockVolume {
             self.readQueued = false
             self.readLock.unlock()
             DispatchQueue.main.async {
-                if self.tileView?.confirmedValue != confirmed {
-                    self.tileView?.confirmedValue = confirmed
-                    NSApp.dockTile.display()
-                }
+                self.latestConfirmed = confirmed
+                self.showConfirmed(confirmed)
             }
+        }
+    }
+
+    static func displayedValue(confirmed: String?, fc2Unresponsive: Bool) -> String? {
+        fc2Unresponsive ? nil : confirmed
+    }
+
+    private func showConfirmed(_ confirmed: String?) {
+        let shown = Self.displayedValue(confirmed: confirmed, fc2Unresponsive: isFC2Unresponsive)
+        if tileView?.confirmedValue != shown {
+            tileView?.confirmedValue = shown
+            NSApp.dockTile.display()
         }
     }
 
