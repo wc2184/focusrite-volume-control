@@ -52,6 +52,15 @@ struct PreferencesView: View {
                                 .padding(.leading, 20)
                         }
 
+                        VStack(alignment: .leading, spacing: 2) {
+                            Toggle("Auto-Restart Focusrite Control 2", isOn: $volumeController.autoRestartFC2)
+
+                            Text("Relaunches FC2 minimized when it stops reaching your interface")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .padding(.leading, 20)
+                        }
+
                         // Allow Gain toggle with subtitle
                         VStack(alignment: .leading, spacing: 2) {
                             Toggle("Allow Gain (0 to +6 dB)", isOn: $volumeController.allowGain)
