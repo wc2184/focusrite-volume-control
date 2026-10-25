@@ -113,6 +113,9 @@ class VolumeController: ObservableObject {
     private var lastVolumeInteraction = Date.distantPast
     /// Reports each level the user sets, including while FC2 cannot reach the interface.
     var onUserVolumeSet: ((Double) -> Void)?
+    /// While FC2 relaunches, presses stay optimistic but are not written: the
+    /// fallback path would otherwise bring the half-started FC2 to the front.
+    var holdsWrites = false
 
     // MARK: - Initialization
 
@@ -191,6 +194,7 @@ class VolumeController: ObservableObject {
     /// A relaunched FC2 shows the interface's last accepted level. Reapply the
     /// level chosen while FC2 could not reach the hardware.
     func reapplyAfterFC2Restart(_ volume: Double) {
+        holdsWrites = false
         disconnect()
         setPlaybackVolume(volume)
     }
@@ -208,13 +212,14 @@ class VolumeController: ObservableObject {
         pendingVolume = clamped
         lastVolumeInteraction = Date()
         onUserVolumeSet?(clamped)
+        guard !holdsWrites else { return }
 
         // A single writer preserves key-press order. If more presses arrive while
         // FC2 is busy, send only the newest accumulated value next.
         guard volumeWriteTask == nil else { return }
         volumeWriteTask = Task { [weak self] in
             guard let self else { return }
-            while let target = self.pendingVolume {
+            while !self.holdsWrites, let target = self.pendingVolume {
                 let result = await self.backend.setPlaybackVolume(
                     target, ensureDirectMonitor: self.ensureDirectMonitorOn)
                 if case .error(let message) = result {

@@ -152,9 +152,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 guard !unresponsive, self.volumeToReapply != nil else { return }
                 // The mount is logged before FC2 is ready to accept writes.
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
-                    guard let self, let volume = self.volumeToReapply else { return }
-                    self.volumeToReapply = nil
-                    self.volumeController.reapplyAfterFC2Restart(volume)
+                    self?.reapplySavedVolume()
                 }
             }
             .store(in: &cancellables)
@@ -164,12 +162,29 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func restartFC2() {
         isRestartingFC2 = true
         volumeToReapply = volumeController.playbackVolume
+        volumeController.holdsWrites = true
         Task { @MainActor [weak self] in
             let relaunched = await FC2Relauncher.restartMinimized()
             guard let self else { return }
             self.isRestartingFC2 = false
-            if !relaunched { self.volumeToReapply = nil }
+            guard relaunched else {
+                self.reapplySavedVolume()
+                return
+            }
+            // Never leave keys unwritten if FC2 does not log a remount.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 15) { [weak self] in
+                guard let self, self.volumeController.holdsWrites else { return }
+                self.reapplySavedVolume()
+            }
         }
+    }
+
+    /// Resume writes with the newest level chosen while FC2 was relaunching.
+    private func reapplySavedVolume() {
+        volumeController.holdsWrites = false
+        guard let volume = volumeToReapply else { return }
+        volumeToReapply = nil
+        volumeController.reapplyAfterFC2Restart(volume)
     }
 
     private func showOnboardingIfNeeded() {
