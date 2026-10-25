@@ -45,6 +45,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var hotkeyManager: HotkeyManager!
     private var syncTimer: Timer?
     private let confirmedDockVolume = ConfirmedDockVolume()
+    private let fc2Health = FC2HealthMonitor()
+    private var isRestartingFC2 = false
+    private var volumeToReapply: Double?
     private var dockClickTimer: Timer?
     private var wasLeftMousePressed = false
     private var pendingDockClose: Bool?
@@ -104,10 +107,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
             .store(in: &cancellables)
 
+        setupFC2HealthMonitor()
+
         // Keep the displayed value aligned with edits in FC2 and recover after
         // FC2 restarts or its window changes.
         syncTimer = Timer(timeInterval: 3, repeats: true) { [weak self] _ in
-            guard let self, self.isFocusriteActive else { return }
+            // A relaunch in progress must not be raced by a second launch.
+            guard let self, self.isFocusriteActive, !self.isRestartingFC2 else { return }
             if self.volumeController.isConnected {
                 self.volumeController.poll()
             } else {
@@ -121,6 +127,65 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     // MARK: - Onboarding
+
+    // MARK: - FC2 Recovery
+
+    private func setupFC2HealthMonitor() {
+        fc2Health.isRestartAllowed = { [weak self] in
+            guard let self else { return false }
+            return self.volumeController.autoRestartFC2 && self.isFocusriteActive && !self.isRestartingFC2
+        }
+        fc2Health.onRestartNeeded = { [weak self] in
+            self?.restartFC2()
+        }
+        // Presses during a relaunch are newer than the level saved before it.
+        volumeController.onUserVolumeSet = { [weak self] level in
+            guard let self, self.volumeToReapply != nil else { return }
+            self.volumeToReapply = level
+        }
+        fc2Health.$isUnresponsive
+            .removeDuplicates()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] unresponsive in
+                guard let self else { return }
+                self.confirmedDockVolume.isFC2Unresponsive = unresponsive
+                guard !unresponsive, self.volumeToReapply != nil else { return }
+                // The mount is logged before FC2 is ready to accept writes.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+                    self?.reapplySavedVolume()
+                }
+            }
+            .store(in: &cancellables)
+        fc2Health.start()
+    }
+
+    private func restartFC2() {
+        isRestartingFC2 = true
+        volumeToReapply = volumeController.playbackVolume
+        volumeController.holdsWrites = true
+        Task { @MainActor [weak self] in
+            let relaunched = await FC2Relauncher.restartMinimized()
+            guard let self else { return }
+            self.isRestartingFC2 = false
+            guard relaunched else {
+                self.reapplySavedVolume()
+                return
+            }
+            // Never leave keys unwritten if FC2 does not log a remount.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 15) { [weak self] in
+                guard let self, self.volumeController.holdsWrites else { return }
+                self.reapplySavedVolume()
+            }
+        }
+    }
+
+    /// Resume writes with the newest level chosen while FC2 was relaunching.
+    private func reapplySavedVolume() {
+        volumeController.holdsWrites = false
+        guard let volume = volumeToReapply else { return }
+        volumeToReapply = nil
+        volumeController.reapplyAfterFC2Restart(volume)
+    }
 
     private func showOnboardingIfNeeded() {
         guard !areAllPermissionsGranted() else {
@@ -156,6 +221,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         dockClickTimer?.invalidate()
         confirmedDockVolume.stop()
+        fc2Health.stop()
         syncTimer?.invalidate()
         volumeController.disconnect()
         removeMediaKeyTap()
