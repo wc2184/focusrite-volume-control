@@ -554,6 +554,17 @@ final class Focusrite_Volume_ControlTests: XCTestCase {
         XCTAssertFalse(VolumeController(backend: StubBackend(), preferences: defaults).autoRestartFC2)
     }
 
+    func testEveryUserVolumeChangeIsReportedForFC2Recovery() {
+        let controller = VolumeController(backend: StubBackend(), preferences: nil)
+        var reported: [Double] = []
+        controller.onUserVolumeSet = { reported.append($0) }
+        controller.setPlaybackVolume(-16)
+        controller.playbackVolumeUp()
+        controller.mute()
+        controller.unmute()
+        XCTAssertEqual(reported, [-16, controller.volumeForTick(9), -127, controller.volumeForTick(9)])
+    }
+
     func testReapplyAfterFC2RestartRestoresTheChosenLevel() {
         let controller = VolumeController(backend: StubBackend(), preferences: nil)
         controller.reapplyAfterFC2Restart(-13)
