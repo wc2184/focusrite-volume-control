@@ -180,25 +180,40 @@ enum FC2Relauncher {
                 _ = await waitUntilTerminated(app, seconds: 2)
             }
         }
+        return await launchMinimized(at: url)
+    }
 
+    /// Launches FC2 in the background and minimizes its window, which keeps it
+    /// reachable through Accessibility from every desktop without taking focus.
+    @MainActor
+    static func launchMinimized() async -> Bool {
+        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) else {
+            logger.error("❌ FC2 is not installed")
+            return false
+        }
+        return await launchMinimized(at: url)
+    }
+
+    @MainActor
+    private static func launchMinimized(at url: URL) async -> Bool {
         let configuration = NSWorkspace.OpenConfiguration()
         configuration.activates = false
         configuration.addsToRecentItems = false
         guard let relaunched = try? await NSWorkspace.shared.openApplication(at: url,
                                                                             configuration: configuration) else {
-            logger.error("❌ FC2 relaunch failed")
+            logger.error("❌ FC2 launch failed")
             return false
         }
 
         // Minimized windows stay in the AX tree; closed ones do not.
         for _ in 0..<40 {
             if minimizeMainWindow(of: relaunched.processIdentifier) {
-                logger.info("✅ FC2 relaunched and minimized")
+                logger.info("✅ FC2 launched and minimized")
                 return true
             }
             try? await Task.sleep(for: .milliseconds(250))
         }
-        logger.error("⚠️ FC2 relaunched but its window could not be minimized")
+        logger.error("⚠️ FC2 launched but its window could not be minimized")
         return true
     }
 

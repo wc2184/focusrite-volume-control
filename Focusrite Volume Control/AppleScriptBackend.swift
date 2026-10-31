@@ -197,46 +197,25 @@ class AppleScriptBackend: VolumeBackend {
         let isRunning = try await runOsascript(checkScript) == "true"
 
         if !isRunning {
-            logger.info("🚀 FC2 not running, launching...")
-            // Launch FC2
-            let launchScript = """
-            tell application "\(fc2Process)" to launch
-            """
-            _ = try await runOsascript(launchScript)
-
-            // Wait for FC2 to be ready (up to 10 seconds)
-            for i in 1...20 {
-                try await Task.sleep(for: .milliseconds(500))
-                let ready = try await runOsascript(checkScript) == "true"
-                if ready {
-                    logger.info("✅ FC2 launched after \(i * 500)ms")
-                    // Give it a moment more to fully initialize UI
-                    try await Task.sleep(for: .milliseconds(1000))
-                    break
-                }
-            }
+            logger.info("🚀 FC2 not running, launching it minimized...")
+            // AppleScript `launch` can bring FC2 to the front; this cannot.
+            guard await FC2Relauncher.launchMinimized() else { throw VolumeBackendError.fc2NotRunning }
+            // Give it a moment more to fully initialize UI
+            try await Task.sleep(for: .milliseconds(1000))
         } else {
             logger.info("✅ FC2 already running")
         }
 
-        // A closed FC2 window can be absent from System Events. Minimized
-        // windows remain accessible, so reopen only when there is no window.
+        // Accessibility sees FC2's window only when it is minimized or on the
+        // current desktop. Never activate FC2 to find it: that takes focus and
+        // switches desktops whenever this runs (reconnects, wake, errors).
         let windowCountScript = """
         tell application "System Events"
             tell process "\(fc2Process)" to return count of windows
         end tell
         """
         if try await runOsascript(windowCountScript) == "0" {
-            _ = try await runOsascript("tell application \"\(fc2Process)\" to activate")
-            var foundWindow = false
-            for _ in 1...15 {
-                if try await runOsascript(windowCountScript) != "0" {
-                    foundWindow = true
-                    break
-                }
-                try await Task.sleep(for: .milliseconds(200))
-            }
-            if !foundWindow { throw VolumeBackendError.fc2WindowNotFound }
+            throw VolumeBackendError.fc2WindowNotFound
         }
 
         // Check if Direct tab is already active.
