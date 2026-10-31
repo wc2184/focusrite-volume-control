@@ -63,6 +63,19 @@ class AppleScriptBackend: VolumeBackend {
     func refresh() async -> VolumeResult {
         do {
             let writeVersion = playbackWriteVersion
+            // AX reaches FC2 on any desktop; System Events only sees windows
+            // that are minimized or on the current desktop.
+            if AXIsProcessTrusted(), let reading = try? await fastPlaybackWriter.read() {
+                isFC2Verified = true
+                if writeVersion == playbackWriteVersion {
+                    _state.playbackVolume = reading.volume
+                    _state.directMonitorEnabled = reading.directMonitor
+                }
+                _state.isConnected = true
+                _state.statusMessage = "Connected"
+                stateSubject.send(_state)
+                return .success
+            }
             try await ensureReady()
             let script = """
             tell application "System Events"
@@ -206,33 +219,17 @@ class AppleScriptBackend: VolumeBackend {
             logger.info("✅ FC2 already running")
         }
 
-        // Accessibility sees FC2's window only when it is minimized or on the
-        // current desktop. Never activate FC2 to find it: that takes focus and
-        // switches desktops whenever this runs (reconnects, wake, errors).
+        // System Events sees FC2's window only when it is minimized or on the
+        // current desktop (the AX paths above reach it anywhere). Never
+        // activate or minimize FC2 here: that takes focus, switches desktops,
+        // or hides a window the user opened, whenever this runs.
         let windowCountScript = """
         tell application "System Events"
             tell process "\(fc2Process)" to return count of windows
         end tell
         """
         if try await runOsascript(windowCountScript) == "0" {
-            // A window on another desktop is still FC2's main window.
-            // Minimizing it in place does not switch desktops and makes it
-            // reachable from all of them.
-            guard let pid = NSRunningApplication.runningApplications(
-                    withBundleIdentifier: "com.focusrite.control").first?.processIdentifier,
-                  FC2Window.minimize(in: AXUIElementCreateApplication(pid)) else {
-                throw VolumeBackendError.fc2WindowNotFound
-            }
-            logger.info("📥 Minimized FC2's window from another desktop")
-            var reachable = false
-            for _ in 1...10 {
-                try await Task.sleep(for: .milliseconds(200))
-                if try await runOsascript(windowCountScript) != "0" {
-                    reachable = true
-                    break
-                }
-            }
-            if !reachable { throw VolumeBackendError.fc2WindowNotFound }
+            throw VolumeBackendError.fc2WindowNotFound
         }
 
         // Check if Direct tab is already active.
@@ -278,6 +275,11 @@ class AppleScriptBackend: VolumeBackend {
     private func ensureReady() async throws {
         // Skip check if already verified (fast path for repeated actions)
         if isFC2Verified {
+            return
+        }
+
+        if AXIsProcessTrusted(), (try? await fastPlaybackWriter.read()) != nil {
+            isFC2Verified = true
             return
         }
 
@@ -460,6 +462,33 @@ private final class AXPlaybackWriter {
                         throw AXWriteError.unavailable
                     }
                     continuation.resume(returning: actual)
+                } catch {
+                    self.controls = nil
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+
+    func read() async throws -> (volume: Double, directMonitor: Bool) {
+        try await withCheckedThrowingContinuation { continuation in
+            queue.async {
+                do {
+                    let controls = try self.resolveControls()
+                    let reported = try self.attribute(kAXValueAttribute as CFString,
+                                                      of: controls.slider) as? String
+                    guard let numeric = reported?
+                            .replacingOccurrences(of: "dB", with: "")
+                            .trimmingCharacters(in: .whitespacesAndNewlines),
+                          let volume = Double(numeric) else {
+                        throw AXWriteError.unavailable
+                    }
+                    let monitor = try self.attribute(kAXValueAttribute as CFString,
+                                                     of: controls.directMonitor)
+                    let enabled = (monitor as? NSNumber)?.boolValue == true ||
+                        (monitor as? String)?.lowercased() == "true" ||
+                        (monitor as? String) == "1"
+                    continuation.resume(returning: (volume, enabled))
                 } catch {
                     self.controls = nil
                     continuation.resume(throwing: error)
