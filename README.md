@@ -36,9 +36,9 @@ A tiny macOS app that lets your Mac’s volume keys control your Focusrite’s v
 
 | Build | macOS | Status |
 | --- | --- | --- |
-| [Modern-Sonoma-and-Later](https://github.com/wc2184/focusrite-volume-control/releases/download/v1.1.4/Focusrite-Volume-Control-v1.1.4-Modern-Sonoma-and-Later.zip) | Sonoma 14.5+ | Recommended |
-| [Ventura-Experimental](https://github.com/wc2184/focusrite-volume-control/releases/download/v1.1.4/Focusrite-Volume-Control-v1.1.4-Ventura-Experimental.zip) | Ventura 13 | Experimental |
-| [Monterey-Experimental](https://github.com/wc2184/focusrite-volume-control/releases/download/v1.1.4/Focusrite-Volume-Control-v1.1.4-Monterey-Experimental.zip) | Monterey 12 | Experimental |
+| [Modern-Sonoma-and-Later](https://github.com/wc2184/focusrite-volume-control/releases/download/v1.1.5/Focusrite-Volume-Control-v1.1.5-Modern-Sonoma-and-Later.zip) | Sonoma 14.5+ | Recommended |
+| [Ventura-Experimental](https://github.com/wc2184/focusrite-volume-control/releases/download/v1.1.5/Focusrite-Volume-Control-v1.1.5-Ventura-Experimental.zip) | Ventura 13 | Experimental |
+| [Monterey-Experimental](https://github.com/wc2184/focusrite-volume-control/releases/download/v1.1.5/Focusrite-Volume-Control-v1.1.5-Monterey-Experimental.zip) | Monterey 12 | Experimental |
 
 The previous [v1.0.1 downloads](https://github.com/wc2184/focusrite-volume-control/releases/tag/v1.0.1) remain available unchanged.
 
@@ -63,6 +63,8 @@ If volume keys stop working after an update, toggle the app off and on in Access
 **v1.1.3 fixes the HUD disappearing on another desktop after locking and unlocking.** Read the [postmortem](docs/hud-lock-recovery-postmortem.md).
 
 **v1.1.4 recovers automatically when Focusrite Control 2 loses contact with your interface.** [What happens and how it's detected](docs/fc2-connection-recovery.md).
+
+**v1.1.5 never brings Focusrite Control 2 to the front or switches desktops.** Volume keys and the Dock reach FC2 even when its window is open on another desktop.
 
 ## How it works
 
