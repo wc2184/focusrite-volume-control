@@ -63,6 +63,19 @@ class AppleScriptBackend: VolumeBackend {
     func refresh() async -> VolumeResult {
         do {
             let writeVersion = playbackWriteVersion
+            // AX reaches FC2 on any desktop; System Events only sees windows
+            // that are minimized or on the current desktop.
+            if AXIsProcessTrusted(), let reading = try? await fastPlaybackWriter.read() {
+                isFC2Verified = true
+                if writeVersion == playbackWriteVersion {
+                    _state.playbackVolume = reading.volume
+                    _state.directMonitorEnabled = reading.directMonitor
+                }
+                _state.isConnected = true
+                _state.statusMessage = "Connected"
+                stateSubject.send(_state)
+                return .success
+            }
             try await ensureReady()
             let script = """
             tell application "System Events"
@@ -197,46 +210,26 @@ class AppleScriptBackend: VolumeBackend {
         let isRunning = try await runOsascript(checkScript) == "true"
 
         if !isRunning {
-            logger.info("🚀 FC2 not running, launching...")
-            // Launch FC2
-            let launchScript = """
-            tell application "\(fc2Process)" to launch
-            """
-            _ = try await runOsascript(launchScript)
-
-            // Wait for FC2 to be ready (up to 10 seconds)
-            for i in 1...20 {
-                try await Task.sleep(nanoseconds: 500_000_000)
-                let ready = try await runOsascript(checkScript) == "true"
-                if ready {
-                    logger.info("✅ FC2 launched after \(i * 500)ms")
-                    // Give it a moment more to fully initialize UI
-                    try await Task.sleep(nanoseconds: 1_000_000_000)
-                    break
-                }
-            }
+            logger.info("🚀 FC2 not running, launching it minimized...")
+            // AppleScript `launch` can bring FC2 to the front; this cannot.
+            guard await FC2Relauncher.launchMinimized() else { throw VolumeBackendError.fc2NotRunning }
+            // Give it a moment more to fully initialize UI
+            try await Task.sleep(nanoseconds: 1_000_000_000)
         } else {
             logger.info("✅ FC2 already running")
         }
 
-        // A closed FC2 window can be absent from System Events. Minimized
-        // windows remain accessible, so reopen only when there is no window.
+        // System Events sees FC2's window only when it is minimized or on the
+        // current desktop (the AX paths above reach it anywhere). Never
+        // activate or minimize FC2 here: that takes focus, switches desktops,
+        // or hides a window the user opened, whenever this runs.
         let windowCountScript = """
         tell application "System Events"
             tell process "\(fc2Process)" to return count of windows
         end tell
         """
         if try await runOsascript(windowCountScript) == "0" {
-            _ = try await runOsascript("tell application \"\(fc2Process)\" to activate")
-            var foundWindow = false
-            for _ in 1...15 {
-                if try await runOsascript(windowCountScript) != "0" {
-                    foundWindow = true
-                    break
-                }
-                try await Task.sleep(nanoseconds: 200_000_000)
-            }
-            if !foundWindow { throw VolumeBackendError.fc2WindowNotFound }
+            throw VolumeBackendError.fc2WindowNotFound
         }
 
         // Check if Direct tab is already active.
@@ -282,6 +275,11 @@ class AppleScriptBackend: VolumeBackend {
     private func ensureReady() async throws {
         // Skip check if already verified (fast path for repeated actions)
         if isFC2Verified {
+            return
+        }
+
+        if AXIsProcessTrusted(), (try? await fastPlaybackWriter.read()) != nil {
+            isFC2Verified = true
             return
         }
 
@@ -472,6 +470,33 @@ private final class AXPlaybackWriter {
         }
     }
 
+    func read() async throws -> (volume: Double, directMonitor: Bool) {
+        try await withCheckedThrowingContinuation { continuation in
+            queue.async {
+                do {
+                    let controls = try self.resolveControls()
+                    let reported = try self.attribute(kAXValueAttribute as CFString,
+                                                      of: controls.slider) as? String
+                    guard let numeric = reported?
+                            .replacingOccurrences(of: "dB", with: "")
+                            .trimmingCharacters(in: .whitespacesAndNewlines),
+                          let volume = Double(numeric) else {
+                        throw AXWriteError.unavailable
+                    }
+                    let monitor = try self.attribute(kAXValueAttribute as CFString,
+                                                     of: controls.directMonitor)
+                    let enabled = (monitor as? NSNumber)?.boolValue == true ||
+                        (monitor as? String)?.lowercased() == "true" ||
+                        (monitor as? String) == "1"
+                    continuation.resume(returning: (volume, enabled))
+                } catch {
+                    self.controls = nil
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+
     private func resolveControls() throws -> Controls {
         guard let app = NSRunningApplication.runningApplications(
             withBundleIdentifier: "com.focusrite.control").first else {
@@ -481,8 +506,7 @@ private final class AXPlaybackWriter {
 
         let root = AXUIElementCreateApplication(app.processIdentifier)
         AXUIElementSetMessagingTimeout(root, 0.5)
-        let windows = try elements(kAXWindowsAttribute as CFString, of: root)
-        guard let window = windows.first(where: { name(of: $0) == "Focusrite Control 2" }) else {
+        guard let window = FC2Window.element(in: root) else {
             throw AXWriteError.unavailable
         }
         let groups = try elements(kAXChildrenAttribute as CFString, of: window)

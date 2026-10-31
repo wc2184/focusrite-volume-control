@@ -38,3 +38,9 @@ Unit tests cover the detection threshold, ignored errors, recovery on remount, c
 ## Prevention
 
 If outages recur, connect the interface directly to the Mac rather than through a hub, and check for Focusrite Control 2 and firmware updates.
+
+## Update: real outages and v1.1.5
+
+After release, v1.1.4 handled two real outages on the same Mac (October 25 and 26): FC2 was relaunched about 22 seconds after the first logged error and the errors stopped. One restart was unnecessary: a burst of timeout errors within one second accompanied a USB disconnect on October 28.
+
+v1.1.5 removes the remaining ways the app could bring FC2 forward. Earlier versions ran `activate` on FC2 when its window was not visible to System Events, which happens whenever the window is open on another desktop. Every reconnect could then switch desktops. FC2 is now started in the background and minimized, macOS rejects its own attempt to come to the front, and the app reads and writes FC2's controls through its main window, which is reachable from any desktop. A window you open is never minimized for you.

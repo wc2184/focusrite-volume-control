@@ -180,25 +180,40 @@ enum FC2Relauncher {
                 _ = await waitUntilTerminated(app, seconds: 2)
             }
         }
+        return await launchMinimized(at: url)
+    }
 
+    /// Launches FC2 in the background and minimizes its window, which keeps it
+    /// reachable through Accessibility from every desktop without taking focus.
+    @MainActor
+    static func launchMinimized() async -> Bool {
+        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) else {
+            logger.error("❌ FC2 is not installed")
+            return false
+        }
+        return await launchMinimized(at: url)
+    }
+
+    @MainActor
+    private static func launchMinimized(at url: URL) async -> Bool {
         let configuration = NSWorkspace.OpenConfiguration()
         configuration.activates = false
         configuration.addsToRecentItems = false
         guard let relaunched = try? await NSWorkspace.shared.openApplication(at: url,
                                                                             configuration: configuration) else {
-            logger.error("❌ FC2 relaunch failed")
+            logger.error("❌ FC2 launch failed")
             return false
         }
 
         // Minimized windows stay in the AX tree; closed ones do not.
         for _ in 0..<40 {
-            if minimizeMainWindow(of: relaunched.processIdentifier) {
-                logger.info("✅ FC2 relaunched and minimized")
+            if FC2Window.minimize(in: AXUIElementCreateApplication(relaunched.processIdentifier)) {
+                logger.info("✅ FC2 launched and minimized")
                 return true
             }
             try? await Task.sleep(nanoseconds: 250_000_000)
         }
-        logger.error("⚠️ FC2 relaunched but its window could not be minimized")
+        logger.error("⚠️ FC2 launched but its window could not be minimized")
         return true
     }
 
@@ -211,19 +226,41 @@ enum FC2Relauncher {
         return app.isTerminated
     }
 
-    private static func minimizeMainWindow(of pid: pid_t) -> Bool {
-        let root = AXUIElementCreateApplication(pid)
+}
+
+// MARK: - Window lookup
+
+/// Accessibility lists only windows that are minimized or on the current
+/// desktop. FC2's main window remains available from any desktop.
+enum FC2Window {
+    static func element(in root: AXUIElement) -> AXUIElement? {
         AXUIElementSetMessagingTimeout(root, 0.5)
-        var value: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(root, kAXWindowsAttribute as CFString, &value) == .success,
-              let windows = value as? [AXUIElement] else { return false }
-        for window in windows {
-            var title: CFTypeRef?
-            guard AXUIElementCopyAttributeValue(window, kAXTitleAttribute as CFString, &title) == .success,
-                  title as? String == "Focusrite Control 2" else { continue }
-            return AXUIElementSetAttributeValue(window, kAXMinimizedAttribute as CFString,
-                                                kCFBooleanTrue) == .success
+        let listed = (attribute(kAXWindowsAttribute, of: root) as? [AXUIElement]) ?? []
+        let candidates = listed + [kAXMainWindowAttribute, kAXFocusedWindowAttribute].compactMap { key -> AXUIElement? in
+            guard let value = attribute(key, of: root),
+                  CFGetTypeID(value) == AXUIElementGetTypeID() else { return nil }
+            return (value as! AXUIElement)
         }
-        return false
+        return candidates.first { title(of: $0) == "Focusrite Control 2" }
+    }
+
+    /// Minimizing does not switch desktops, unlike activating FC2.
+    static func minimize(in root: AXUIElement) -> Bool {
+        guard let window = element(in: root) else { return false }
+        return AXUIElementSetAttributeValue(window, kAXMinimizedAttribute as CFString,
+                                            kCFBooleanTrue) == .success
+    }
+
+    private static func title(of element: AXUIElement) -> String? {
+        for key in [kAXTitleAttribute, kAXDescriptionAttribute] {
+            if let value = attribute(key, of: element) as? String, !value.isEmpty { return value }
+        }
+        return nil
+    }
+
+    private static func attribute(_ key: String, of element: AXUIElement) -> CFTypeRef? {
+        var value: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(element, key as CFString, &value) == .success else { return nil }
+        return value
     }
 }
