@@ -215,7 +215,24 @@ class AppleScriptBackend: VolumeBackend {
         end tell
         """
         if try await runOsascript(windowCountScript) == "0" {
-            throw VolumeBackendError.fc2WindowNotFound
+            // A window on another desktop is still FC2's main window.
+            // Minimizing it in place does not switch desktops and makes it
+            // reachable from all of them.
+            guard let pid = NSRunningApplication.runningApplications(
+                    withBundleIdentifier: "com.focusrite.control").first?.processIdentifier,
+                  FC2Window.minimize(in: AXUIElementCreateApplication(pid)) else {
+                throw VolumeBackendError.fc2WindowNotFound
+            }
+            logger.info("📥 Minimized FC2's window from another desktop")
+            var reachable = false
+            for _ in 1...10 {
+                try await Task.sleep(for: .milliseconds(200))
+                if try await runOsascript(windowCountScript) != "0" {
+                    reachable = true
+                    break
+                }
+            }
+            if !reachable { throw VolumeBackendError.fc2WindowNotFound }
         }
 
         // Check if Direct tab is already active.
@@ -460,8 +477,7 @@ private final class AXPlaybackWriter {
 
         let root = AXUIElementCreateApplication(app.processIdentifier)
         AXUIElementSetMessagingTimeout(root, 0.5)
-        let windows = try elements(kAXWindowsAttribute as CFString, of: root)
-        guard let window = windows.first(where: { name(of: $0) == "Focusrite Control 2" }) else {
+        guard let window = FC2Window.element(in: root) else {
             throw AXWriteError.unavailable
         }
         let groups = try elements(kAXChildrenAttribute as CFString, of: window)
