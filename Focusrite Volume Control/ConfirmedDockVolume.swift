@@ -112,8 +112,7 @@ final class ConfirmedDockVolume {
 
         let root = AXUIElementCreateApplication(app.processIdentifier)
         AXUIElementSetMessagingTimeout(root, 0.5)
-        let windows = try elements(kAXWindowsAttribute as CFString, of: root)
-        guard let window = windows.first(where: { name(of: $0) == "Focusrite Control 2" }) else {
+        guard let window = FC2Window.element(in: root) else {
             throw DockReadError.unavailable
         }
         let groups = try elements(kAXChildrenAttribute as CFString, of: window)

@@ -52,7 +52,7 @@ enum VolumeBackendError: Error, LocalizedError {
         case .fc2NotRunning:
             return "Focusrite Control 2 is not running"
         case .fc2WindowNotFound:
-            return "Could not find Focusrite Control 2 window"
+            return "Minimize Focusrite Control 2 so volume keys can reach it from any desktop"
         case .appleScriptError(let msg):
             return "AppleScript error: \(msg)"
         }
